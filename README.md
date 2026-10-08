@@ -2,7 +2,7 @@
 
 Official code for the NeurIPS 2026 paper.
 
-[**Paper**](https://arxiv.org/abs/2605.22620) · [**arXiv**](https://arxiv.org/abs/2605.22620) · [**OpenReview**](https://openreview.net/forum?id=D8K5QK3kwT) · [**Project page**](https://shourovj.github.io/projects-sites/unsupervised-rl/)
+[**Paper**](https://arxiv.org/abs/2605.22620) · [**arXiv**](https://arxiv.org/abs/2605.22620) · [**OpenReview**](https://openreview.net/forum?id=D8K5QK3kwT) · [**Project page**](https://machine-intelligence-lab-wvu.github.io/multi-reward/)
 
 ---
 
@@ -85,6 +85,8 @@ data/                     dataset preparation (prepare_math.py, prepare_gsm8k.py
 
 evaluation/               benchmark harnesses (GSM8K, MATH-500, MMLU-Pro,
                           AIME, LiveCodeBench, CRUXEval) + trajectory tools
+
+docs/                     project page (served by GitHub Pages) + REPRODUCING.md
 ```
 
 The starred paths are the method. Everything else is infrastructure.

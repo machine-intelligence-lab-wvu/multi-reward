@@ -19,7 +19,7 @@ authors:
     given-names: Prashnna
 license: Apache-2.0
 repository-code: "https://github.com/machine-intelligence-lab-wvu/multi-reward"
-url: "https://shourovj.github.io/projects-sites/unsupervised-rl/"
+url: "https://machine-intelligence-lab-wvu.github.io/multi-reward/"
 preferred-citation:
   type: conference-paper
   title: >-

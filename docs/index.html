@@ -1,0 +1,564 @@
+<title>CIRCA</title>
+<style>
+/* ===== Azure — light is the base, dark overrides the same tokens ===== */
+:root{
+  --ours:#1769D6; --onOurs:#FFFFFF; --fail:#C8542A; --sup:#64748B; --amber:#A96F12; --link:#1565C8;
+  --c2:#2E6FC4;
+  --g1:rgba(90,166,255,.22); --g2:rgba(125,211,252,.18); --g3:rgba(243,178,97,.17); --base:#EDF3FA;
+  --panel:rgba(255,255,255,.68); --panel2:rgba(255,255,255,.46);
+  --line:rgba(16,42,80,.14); --line2:rgba(16,42,80,.09);
+  --fg:#0D1A2D; --fg2:#44556E; --fg3:#6E8097; --authfg:#1C3558;
+  --navbg:rgba(255,255,255,.70); --shadow:rgba(20,45,85,.11);
+  --figbg:#FFFFFF; --prebg:rgba(16,42,80,.055); --fadeto:#F6F9FD;
+  --gridc:rgba(16,42,80,.11); --trackbg:rgba(16,42,80,.09);
+  --hover:rgba(16,42,80,.06); --btnbg:rgba(16,42,80,.04); --btnbg2:rgba(16,42,80,.08);
+  --probbg:rgba(16,42,80,.045);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ours:#5AA6FF; --onOurs:#04142E; --fail:#F7A07A; --sup:#A3B2C6; --amber:#F3B261; --link:#9CC6FF;
+  --c2:#7FB3FF;
+  --g1:rgba(90,166,255,.26); --g2:rgba(125,211,252,.16); --g3:rgba(243,178,97,.13); --base:#141D33;
+  --panel:rgba(255,255,255,.050); --panel2:rgba(255,255,255,.035);
+  --line:rgba(255,255,255,.14); --line2:rgba(255,255,255,.08);
+  --fg:#EEF3F9; --fg2:#AEBBCC; --fg3:#7C8BA0; --authfg:#C3D7EE;
+  --navbg:rgba(20,29,51,.62); --shadow:rgba(5,12,28,.34);
+  --figbg:#FFFFFF; --prebg:rgba(6,12,26,.42); --fadeto:#222C44;
+  --gridc:rgba(255,255,255,.07); --trackbg:rgba(255,255,255,.07);
+  --hover:rgba(255,255,255,.08); --btnbg:rgba(255,255,255,.05); --btnbg2:rgba(255,255,255,.09);
+  --probbg:rgba(255,255,255,.045);
+}}
+:root[data-theme="dark"]{
+  --ours:#5AA6FF; --onOurs:#04142E; --fail:#F7A07A; --sup:#A3B2C6; --amber:#F3B261; --link:#9CC6FF;
+  --c2:#7FB3FF;
+  --g1:rgba(90,166,255,.26); --g2:rgba(125,211,252,.16); --g3:rgba(243,178,97,.13); --base:#141D33;
+  --panel:rgba(255,255,255,.050); --panel2:rgba(255,255,255,.035);
+  --line:rgba(255,255,255,.14); --line2:rgba(255,255,255,.08);
+  --fg:#EEF3F9; --fg2:#AEBBCC; --fg3:#7C8BA0; --authfg:#C3D7EE;
+  --navbg:rgba(20,29,51,.62); --shadow:rgba(5,12,28,.34);
+  --figbg:#FFFFFF; --prebg:rgba(6,12,26,.42); --fadeto:#222C44;
+  --gridc:rgba(255,255,255,.07); --trackbg:rgba(255,255,255,.07);
+  --hover:rgba(255,255,255,.08); --btnbg:rgba(255,255,255,.05); --btnbg2:rgba(255,255,255,.09);
+  --probbg:rgba(255,255,255,.045);
+}
+:root{
+  --sig-ours:var(--ours); --sig-fail:var(--fail); --sig-sup:var(--sup); --ink3:var(--fg3);
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+#bgfx{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+nav,.wrap,footer{position:relative;z-index:1}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:5.5rem}
+body{
+  margin:0;color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.6;
+  background:
+    radial-gradient(1100px 680px at -8% -6%, var(--g1), transparent 62%),
+    radial-gradient(900px 620px at 106% 6%, var(--g2), transparent 60%),
+    radial-gradient(1000px 700px at 50% 118%, var(--g3), transparent 62%),
+    var(--base);
+  background-attachment:fixed;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:72rem;margin:0 auto;padding:0 1.25rem}
+a{color:var(--link)}
+::selection{background:color-mix(in srgb,var(--ours) 32%,transparent)}
+.circa{color:var(--ours);font-weight:750}
+
+/* nav */
+nav{position:sticky;top:0;z-index:50;padding:.85rem 1.25rem;display:flex;justify-content:center}
+.navin{display:flex;gap:.25rem;align-items:center;background:var(--navbg);backdrop-filter:blur(14px) saturate(150%);-webkit-backdrop-filter:blur(14px) saturate(150%);
+  border:1px solid var(--line);border-radius:999px;padding:.4rem .5rem;box-shadow:0 8px 30px var(--shadow);
+  overflow-x:auto;max-width:100%}
+.navin a{color:var(--fg2);text-decoration:none;font-size:.86rem;font-weight:600;padding:.45rem .9rem;
+  border-radius:999px;white-space:nowrap}
+.navin a:hover{color:var(--fg);background:var(--hover)}
+.tbtn{margin-left:.35rem;width:34px;height:34px;flex:none;display:inline-flex;align-items:center;
+  justify-content:center;border-radius:50%;border:1px solid var(--line);background:var(--btnbg);
+  color:var(--fg2);cursor:pointer;transition:color .15s,border-color .15s,background .15s}
+.tbtn:hover{color:var(--ours);border-color:var(--ours);background:var(--btnbg2)}
+.tbtn svg{width:17px;height:17px}
+.i-sun{display:none}
+:root[data-theme="dark"] .i-sun{display:block}
+:root[data-theme="dark"] .i-moon{display:none}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .i-sun{display:block}
+  :root:not([data-theme="light"]) .i-moon{display:none}
+}
+
+/* panels */
+.panel{background:var(--panel);backdrop-filter:blur(13px) saturate(150%);-webkit-backdrop-filter:blur(13px) saturate(150%);border:1px solid var(--line);
+  border-radius:24px;padding:2.5rem 2.1rem;margin-bottom:1.1rem;box-shadow:0 18px 50px var(--shadow)}
+.panel.tight{padding:1.7rem}
+
+/* hero */
+.hero{text-align:center}
+.tagname{font-size:clamp(2.6rem,7vw,4.6rem);font-weight:820;letter-spacing:-.04em;line-height:1;
+  color:var(--ours);margin:0 0 .3rem}
+h1{font-size:clamp(1.25rem,2.6vw,1.75rem);line-height:1.25;font-weight:640;letter-spacing:-.015em;
+  margin:0 0 1.3rem;color:var(--fg);text-wrap:balance}
+.expand{font-family:var(--mono);font-size:.76rem;letter-spacing:.08em;color:var(--fg3);margin:0 0 1.5rem}
+.expand b{color:var(--ours);font-weight:700}
+.authors{font-size:1.04rem;font-weight:650;color:var(--authfg);margin:0 0 .5rem;line-height:1.9}
+.authors sup{color:var(--amber);font-size:.68em;font-weight:800}
+.affil{font-size:.9rem;color:var(--fg2);margin:0 0 .3rem;line-height:1.85}
+.affil sup{color:var(--amber);font-weight:800}
+.venue{font-size:1.05rem;font-weight:800;color:var(--amber);margin:.6rem 0 1.6rem}
+.btns{display:flex;gap:.65rem;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.72rem 1.4rem;border-radius:999px;
+  background:var(--btnbg);border:1px solid var(--line);color:var(--fg);text-decoration:none;
+  font-size:.95rem;font-weight:700;transition:transform .14s,border-color .14s,background .14s}
+.btn:hover{transform:translateY(-2px);border-color:var(--ours);background:var(--btnbg2)}
+.btn svg{width:17px;height:17px;flex:none}
+.btn.pri{background:var(--ours);border-color:var(--ours);color:var(--onOurs)}
+.btn.pri:hover{filter:brightness(1.12)}
+.btn.soon{cursor:default;opacity:.62;font-weight:650}
+.btn.soon:hover{transform:none;border-color:var(--line);background:var(--btnbg)}
+
+/* tldr */
+.tldr{font-size:1.05rem;color:var(--fg2);margin:0}
+.tldr b.t{color:var(--ours);font-weight:800;letter-spacing:.02em}
+.tldr strong{color:var(--fg);font-weight:700}
+
+/* sections */
+h2{text-align:center;font-size:clamp(1.55rem,3vw,2.15rem);font-weight:780;letter-spacing:-.022em;
+  margin:0 0 .55rem;text-wrap:balance}
+.sublede{text-align:center;color:var(--fg2);max-width:48rem;margin:0 auto 1.9rem;font-size:1rem}
+p{margin:0 0 .9rem;color:var(--fg2)}
+.panel>p:last-child{margin-bottom:0}
+
+/* figures */
+.figcard{background:var(--figbg);border:1px solid var(--line2);border-radius:16px;padding:1rem;margin:0 0 1rem}
+.figcard img{width:100%;height:auto;display:block;border-radius:8px}
+.figcard.plain{background:transparent;padding:0}
+.cap{font-size:.9rem;color:var(--fg2);margin:0;text-align:center;max-width:54rem;margin-inline:auto}
+.cap b{color:var(--fg);font-weight:700}
+.split{display:grid;grid-template-columns:1.25fr 1fr;gap:1.2rem;align-items:center}
+@media(max-width:860px){.split{grid-template-columns:1fr}}
+
+/* compare cards */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.5rem 0}
+.ccard{border:1px solid var(--line);border-top:3px solid var(--c);border-radius:16px;padding:1.35rem 1.45rem;
+  background:var(--panel2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.ccard h4{margin:0 0 .5rem;font-size:1.1rem;font-weight:760;color:var(--c)}
+.ccard .mode{font-family:var(--mono);font-size:.7rem;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--fg3);margin:0 0 .7rem;font-weight:600}
+.ccard p{margin:0;font-size:.93rem}
+.ccard.a{--c:var(--c2)}.ccard.b{--c:var(--fail)}.ccard.o{--c:var(--ours)}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr));gap:.8rem;margin:1.6rem 0 0}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:1.15rem;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.stat b{display:block;font-family:var(--mono);font-size:1.85rem;font-weight:700;letter-spacing:-.03em;
+  line-height:1;font-variant-numeric:tabular-nums}
+.stat.o b{color:var(--ours)}.stat.f b{color:var(--fail)}
+.stat span{display:block;font-size:.78rem;color:var(--fg3);margin-top:.5rem;line-height:1.45}
+
+/* charts */
+.chead{display:flex;justify-content:space-between;align-items:center;gap:.9rem;flex-wrap:wrap;margin-bottom:.7rem}
+.ctitle{font-family:var(--mono);font-size:.76rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--fg2);font-weight:600}
+.tabs{display:flex;gap:.4rem}
+.tabs button,.ghost{font-family:var(--sans);font-size:.88rem;font-weight:650;padding:.5rem 1.1rem;
+  border:1px solid var(--line);background:var(--btnbg);color:var(--fg2);border-radius:999px;cursor:pointer;
+  transition:background .14s,color .14s,border-color .14s}
+.tabs button:hover,.ghost:hover{color:var(--fg);border-color:var(--ours)}
+.tabs button.on{background:var(--ours);color:var(--onOurs);border-color:var(--ours);font-weight:800}
+.chart{width:100%;height:auto;display:block;overflow:visible}
+.grid{stroke:var(--gridc)}
+.baseline{stroke:var(--fg3);stroke-dasharray:2 3;opacity:.75}
+.baselab,.tick,.axlab,.marktx{font-family:var(--mono);fill:var(--fg3)}
+.baselab{font-size:9px}.tick{font-size:10.5px}.axlab{font-size:10px;text-anchor:middle;letter-spacing:.06em}
+.ty{text-anchor:end}.tx{text-anchor:middle}
+.ln{fill:none;stroke-linejoin:round;stroke-linecap:round}
+.markline{stroke:var(--fail);stroke-dasharray:3 3;opacity:.6}.marktx{font-size:9px;fill:var(--fail)}
+.markg{transition:opacity .5s}
+.legend{display:flex;gap:1.3rem;flex-wrap:wrap;font-size:.9rem;color:var(--fg2);justify-content:center;margin-top:.7rem}
+.legend span{display:inline-flex;align-items:center;gap:.45rem}
+.legend b{color:var(--ours);font-weight:750}
+.sw{width:20px;height:3px;border-radius:2px;display:inline-block}
+.sw.grpo{background:var(--sup)}.sw.intuitor{background:var(--fail)}.sw.ours{background:var(--ours);height:5px}
+
+/* retention */
+.retrow{display:grid;grid-template-columns:11.5rem 1fr;gap:1rem;padding:.95rem 0;border-top:1px solid var(--line2)}
+.retrow:first-child{border-top:none}
+.retname{font-weight:700;font-size:.96rem}
+.retname span{display:block;font-family:var(--mono);font-size:.7rem;color:var(--fg3);font-weight:400}
+.retbars{display:flex;flex-direction:column;gap:.42rem;min-width:0}
+.retbar{display:grid;grid-template-columns:6.5rem 1fr 6.5rem;gap:.8rem;align-items:center}
+.rl{font-family:var(--mono);font-size:.76rem;color:var(--fg2)}
+.rt{background:var(--trackbg);height:13px;border-radius:3px;overflow:hidden}
+.fill{display:block;height:100%;width:0;border-radius:3px;transition:width 1.1s cubic-bezier(.22,.9,.3,1)}
+.fill.go{width:var(--w)}
+.fill.ours{background:var(--ours)}.fill.intuitor{background:var(--fail)}.fill.grpo{background:var(--sup)}
+.rv{font-family:var(--mono);font-size:.78rem;text-align:right;font-variant-numeric:tabular-nums;color:var(--fg2)}
+.rv.ours{color:var(--ours);font-weight:750}.rv.intuitor{color:var(--fail)}
+
+/* tables — larger, bolder */
+.tw{overflow-x:auto;margin:0}
+table{border-collapse:collapse;width:100%;font-size:1rem}
+th,td{padding:.78rem .9rem;text-align:left}
+thead th{font-size:.84rem;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);
+  font-weight:800;white-space:nowrap;border-bottom:2px solid var(--line);padding-bottom:.8rem}
+tbody td,tbody th{border-bottom:1px solid var(--line2)}
+tbody tr:last-child td,tbody tr:last-child th{border-bottom:none}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tbody th{font-weight:700;color:var(--fg);font-size:.97rem}
+tr.grp th{font-family:var(--mono);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--amber);font-weight:700;padding-top:1.3rem;border-bottom:none}
+tr.ours th,tr.ours td{color:var(--ours);background:color-mix(in srgb,var(--ours) 9%,transparent)}
+tr.ours th{font-weight:850;font-size:1rem}
+tr.fail td.zero{color:var(--fail);font-weight:700}
+.best{font-weight:800;color:var(--fg)}
+tr.ours .best{color:var(--ours)}
+.kk{display:block;font-family:var(--mono);font-size:.68rem;color:var(--fg3);font-weight:400}
+td.num i{font-style:normal;color:var(--fg3);margin-left:.55rem;font-size:.88em}
+td.num b{font-weight:500;color:var(--fg3);margin-left:.55rem;font-size:.88em}
+.tnote{font-size:.85rem;color:var(--fg3);margin:1rem 0 0}
+
+/* qualitative */
+.qgrid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.3rem 0 0}
+.qcol{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--panel2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  display:flex;flex-direction:column}
+.qhead{padding:.8rem 1.1rem;font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;
+  justify-content:space-between;align-items:center;gap:.6rem;border-bottom:1px solid var(--line2)}
+.qcol.bad .qhead{color:var(--fail);background:color-mix(in srgb,var(--fail) 12%,transparent)}
+.qcol.good .qhead{color:var(--ours);background:color-mix(in srgb,var(--ours) 12%,transparent)}
+.qbody{padding:.95rem 1.1rem;font-size:.88rem;line-height:1.62;color:var(--fg2);flex:1}
+.qbody p{margin:0 0 .55rem}.qbody p:last-child{margin-bottom:0}
+#loopbox{height:10.5rem;overflow:hidden;position:relative}
+#loopbox p.rep{color:var(--fail)}
+#loopbox:after{content:"";position:absolute;left:0;right:0;bottom:0;height:3rem;
+  background:linear-gradient(transparent,var(--fadeto))}
+.qans{font-family:var(--mono);font-size:.78rem;padding:.65rem 1.1rem;border-top:1px solid var(--line2);color:var(--fg3)}
+.qans b{color:var(--ours);font-weight:750}.qans b.f{color:var(--fail)}
+.prob{background:var(--probbg);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;
+  padding:.9rem 1.2rem;font-size:.94rem;color:var(--fg2);margin:0}
+.prob b{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--amber);margin-bottom:.35rem;font-weight:700}
+
+pre{background:var(--prebg);border:1px solid var(--line);border-radius:14px;padding:1.1rem;
+  overflow-x:auto;font-family:var(--mono);font-size:.8rem;line-height:1.6;margin:0;color:var(--fg2)}
+footer{padding:2.5rem 1.25rem 3.5rem;color:var(--fg3);font-size:.86rem}
+footer a{color:var(--fg2)}
+footer .ack{max-width:52rem;margin:0 auto 1rem;text-align:center;line-height:1.65;color:var(--fg3)}
+footer .ack b{color:var(--fg2);font-weight:700}
+footer .corr{margin:0;text-align:center;color:var(--fg3)}
+
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .6s,transform .6s}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none}.fill{transition:none}}
+@media (max-width:820px){
+  .duo,.qgrid{grid-template-columns:1fr}
+  .retrow{grid-template-columns:1fr}
+  .panel{padding:1.7rem 1.2rem;border-radius:18px}
+}
+</style>
+
+<canvas id="bgfx" aria-hidden="true"></canvas>
+
+<nav><div class="navin">
+  <a href="#tldr">Overview</a><a href="#why">Why collapse</a><a href="#method">Method</a>
+  <a href="#results">Results</a><a href="#examples">Examples</a><a href="#bibtex">BibTeX</a>
+  <button id="themeBtn" class="tbtn" aria-label="Switch colour theme" title="Switch theme">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path class="i-moon" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      <g class="i-sun"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.1 5.1l1.4 1.4M17.5 17.5l1.4 1.4M18.9 5.1l-1.4 1.4M6.5 17.5l-1.4 1.4"/></g>
+    </svg>
+  </button>
+</div></nav>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="panel hero">
+    <p class="tagname">CIRCA</p>
+    <h1>Two is better than one: a collapse-resistant multi-reward RLIF framework</h1>
+    <p class="expand"><b>C</b>omplementary <b>I</b>ntrinsic <b>R</b>ewards with <b>C</b>ovariance-<b>A</b>ware regularization</p>
+    <p class="authors">
+      Shourov Joarder<sup>1</sup>, Diganta Sikdar<sup>1</sup>, Ahsan Habib Akash<sup>2</sup>,
+      Binod Bhattarai<sup>3,4,5</sup>, Prashnna Gyawali<sup>2</sup>
+    </p>
+    <p class="affil">
+      <sup>1</sup>BUET &nbsp; <sup>2</sup>West Virginia University &nbsp; <sup>3</sup>University of Aberdeen
+      &nbsp; <sup>4</sup>Fogsphere (Redev.AI) &nbsp; <sup>5</sup>UCL
+    </p>
+    <p class="venue">NeurIPS 2026</p>
+    <div class="btns">
+      <a class="btn pri" href="https://arxiv.org/pdf/2605.22620" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Paper</a>
+      <a class="btn" href="https://arxiv.org/abs/2605.22620" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l16 16M20 4L4 20"/></svg>arXiv</a>
+      <a class="btn" href="https://openreview.net/forum?id=D8K5QK3kwT&amp;noteId=NMIfUX5MeE" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>OpenReview</a>
+      <span class="btn soon" aria-disabled="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>Code — coming soon</span>
+    </div>
+  </div>
+
+  <!-- TLDR -->
+  <div class="panel tight" id="tldr">
+    <p class="tldr"><b class="t">TL;DR</b> &nbsp;Intrinsic rewards get hacked, and the two dominant ones fail in
+    <strong>opposite directions</strong>. <span class="circa">CIRCA</span> optimizes both at once — each closes the
+    loophole the other leaves open — normalizes them per channel, and penalizes only the ~2% of tokens that drive
+    entropy collapse. It tracks <strong>supervised</strong> RLVR across four backbones while every single-signal
+    baseline falls to near zero.</p>
+  </div>
+
+  <!-- MOTIVATION -->
+  <div class="panel reveal">
+    <div class="figcard"><img src="img/motivation.png" alt="Three panels: supervised RLVR needs an external verifier and stays flat; unsupervised RLIF uses one intrinsic reward and collapses; CIRCA uses complementary intrinsic rewards and stays stable."></div>
+    <p class="cap"><b>Supervised RLVR</b> needs an external verifier. <b>Single-signal RLIF</b> removes it and
+    collapses. <span class="circa">CIRCA</span> combines two complementary intrinsic rewards and stays stable — with
+    no verifier at any point.</p>
+  </div>
+
+  <!-- TEASER + stats -->
+  <div class="panel reveal">
+    <div class="split">
+      <div>
+        <h2 style="text-align:left;margin-bottom:.8rem">Peak is easy.<br>Staying there is not.</h2>
+        <p>Every unsupervised method reaches a strong peak. The question is what happens when you keep training.
+        <span class="circa">CIRCA</span> keeps <strong style="color:var(--fg)">88.9%</strong> of its peak at step
+        340; both single-signal rewards reach exactly zero.</p>
+        <div class="stats" style="grid-template-columns:1fr 1fr">
+          <div class="stat f"><b>0.0%</b><span>INTUITOR GSM8K pass@1 at step 340, from a 72.9% peak</span></div>
+          <div class="stat o"><b>88.9%</b><span>of peak retained by CIRCA at the same step</span></div>
+        </div>
+      </div>
+      <div class="figcard"><img src="img/teaser.png" alt="Slope chart: at peak all methods are near 73 percent; after extended training GRPO-GT holds 73.2, CIRCA holds 64.9, while cluster voting and self-certainty both fall to 0.0."></div>
+    </div>
+  </div>
+
+  <!-- WHY -->
+  <div class="panel reveal" id="why">
+    <h2>Why single-reward RLIF collapses</h2>
+    <p class="sublede">Remove the verifier and nothing anchors the policy. It over-optimizes whatever proxy it was
+    given — and the two dominant proxies break in exactly opposite ways.</p>
+    <div class="duo">
+      <div class="ccard a">
+        <p class="mode">Answer-space collapse</p>
+        <h4>Cluster voting</h4>
+        <p>Sees only the extracted answer, never the reasoning path. The policy drifts freely in reasoning space
+        while funnelling every final answer into one dominant cluster. Entropy and length <em>rise</em> as accuracy
+        crashes.</p>
+      </div>
+      <div class="ccard b">
+        <p class="mode">Token-space collapse</p>
+        <h4>Self-certainty</h4>
+        <p>Sees only token confidence, never correctness. The policy becomes confidently deterministic — entropy
+        falls to 0.03–0.17 nats and completions shrink to ~100-token templates.</p>
+      </div>
+    </div>
+    <div class="figcard"><img src="img/failmodes.png" alt="Accuracy, mean completion length and mean entropy over training for cluster-only, INTUITOR and CIRCA without KL-Cov."></div>
+    <p class="cap">Each reward is blind exactly where the other looks — which is why combining them blocks both
+    exploits. Still not enough alone: <span class="circa">CIRCA</span> without KL-Cov degenerates by step 260.</p>
+  </div>
+
+  <!-- METHOD -->
+  <div class="panel reveal" id="method">
+    <h2>Method</h2>
+    <p class="sublede">Two complementary intrinsic rewards, each <em>z</em>-scored within the prompt group, combined
+    into one advantage — plus a KL penalty aimed only at the tokens that cause collapse.</p>
+    <div class="figcard"><img src="img/method.png" alt="Pipeline: a query produces G rollouts; a self-certainty reward and a cluster-voting reward are each GDPO-normalized and combined into an advantage; GRPO updates the policy with an extra KL penalty on high-covariance tokens."></div>
+    <div class="duo">
+      <div class="ccard a">
+        <p class="mode">Why per-channel normalization</p>
+        <h4>GDPO</h4>
+        <p>Combined naively, the self-certainty channel dominates the gradient by roughly an order of magnitude,
+        quietly collapsing the objective back to a single signal.</p>
+      </div>
+      <div class="ccard o">
+        <p class="mode">Why targeted, not global</p>
+        <h4>KL-Cov</h4>
+        <p>Penalizes only the top ~2% of tokens by log-prob–advantage covariance. A global entropy bonus pressures
+        every token; this one is stable across a <strong style="color:var(--fg)">200×</strong> range of
+        β<sub>cov</sub>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN TRAJECTORY FIGURE -->
+  <div class="panel reveal">
+    <h2>340 steps, two scales, three benchmarks</h2>
+    <p class="sublede">Evaluated every 20 steps on in-distribution GSM8K and MATH500 and out-of-distribution
+    MMLU-Pro.</p>
+    <div class="figcard"><img src="img/traj15b3b.png" alt="Six panels of pass@1 over 340 training steps for Qwen2.5-1.5B and 3B on GSM8K, MATH500 and MMLU-Pro, comparing GRPO-GT, INTUITOR, CIRCA without KL-Cov, and CIRCA."></div>
+    <p class="cap">INTUITOR reaches near-zero math accuracy at both scales. <span class="circa">CIRCA</span> without
+    KL-Cov delays collapse by ~60 steps but does not prevent it. Only the full method stays with supervised GRPO-GT
+    across the whole horizon.</p>
+  </div>
+
+  <!-- LIVE CHART -->
+  <div class="panel reveal" id="results" data-replay="traj">
+    <h2>Watch the collapse happen</h2>
+    <p class="sublede">Qwen3-1.7B-Base — a newer pretraining generation, same recipe. INTUITOR peaks at step 40 and
+    decays; on MATH500 it finishes <em>below the base model it started from</em>.</p>
+    <div class="chead">
+      <span class="ctitle">Greedy pass@1 · Qwen3-1.7B-Base</span>
+      <span style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <span class="tabs" id="traj-tabs"><button class="on" data-b="gsm8k">GSM8K</button><button data-b="math500">MATH500</button></span>
+        <button class="ghost" id="traj-replay">↻ Replay</button>
+      </span>
+    </div>
+    <div id="traj-chart"></div>
+    <div class="legend">
+      <span><i class="sw grpo"></i> GRPO-GT (supervised)</span>
+      <span><i class="sw intuitor"></i> INTUITOR</span>
+      <span><i class="sw ours"></i> <b>CIRCA (ours)</b></span>
+    </div>
+  </div>
+
+  <!-- retention -->
+  <div class="panel reveal">
+    <h2>The failure worsens as models get better</h2>
+    <p class="sublede">Collapse is not a small-model artifact. At 7B, INTUITOR scores <strong>exactly zero</strong>
+    on every math task — including pass@<em>K</em> coverage with 32 samples. CIRCA's retention moves the other way.</p>
+    <div class="retwrap" id="ret-rows"></div>
+    <p class="tnote">Retention = end ÷ peak pass@1, shown GSM8K / MATH500. Bars show the mean.</p>
+  </div>
+
+  <!-- 7B -->
+  <div class="panel reveal">
+    <h2>Qwen2.5-7B at step 240</h2>
+    <p class="sublede">Greedy · <i>avg-pass@1</i> · <b style="font-weight:600">pass@K</b> at T=1. A policy that merely
+    picked one wrong answer would still show coverage at pass@32. INTUITOR shows none.</p>
+    <div class="tw"><table id="snap7b">
+      <thead><tr><th>Benchmark</th><th class="num">GRPO-GT (sup.)</th><th class="num">INTUITOR</th><th class="num">CIRCA (ours)</th></tr></thead>
+      <tbody></tbody></table></div>
+  </div>
+
+  <!-- stability -->
+  <div class="panel reveal">
+    <h2>Stability under continued training</h2>
+    <p class="sublede">Each cell is GSM8K / MATH500. Collapse step = first checkpoint below half of peak.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Method</th><th class="num">Peak</th><th class="num">Peak step</th><th class="num">Collapse</th><th class="num">Step 340</th><th class="num">Retention</th></tr></thead>
+      <tbody id="stab-body"></tbody></table></div>
+  </div>
+
+  <!-- benchmarks -->
+  <div class="panel reveal">
+    <h2>Benchmarks</h2>
+    <p class="sublede">After extended training. LiveCodeBench v6 and CRUXEval-O are code-execution tasks no method
+    saw during training. <strong style="color:var(--fg)">Bold</strong> = best unsupervised.</p>
+    <div class="tw"><table id="main-table"><thead></thead><tbody></tbody></table></div>
+    <p class="tnote">Training used no labels, verifiers or reward models; ground truth scored frozen checkpoints only.</p>
+  </div>
+
+  <!-- KL-Cov transfer -->
+  <div class="panel reveal" data-replay="klcov">
+    <h2>KL-Cov also improves supervised RLVR</h2>
+    <p class="sublede">It consumes only (log-prob, advantage) pairs, so it drops into any clipped-surrogate method.
+    Plain GRPO-GT plateaus at step 40; the augmented arm wins every checkpoint from 120 on.</p>
+    <div class="chead">
+      <span class="ctitle">Greedy pass@1 · Qwen2.5-1.5B · supervised</span>
+      <span class="tabs" id="klcov-tabs"><button class="on" data-b="gsm8k">GSM8K</button><button data-b="math500">MATH500</button></span>
+    </div>
+    <div id="klcov-chart"></div>
+    <div class="legend"><span><i class="sw grpo"></i> GRPO-GT</span><span><i class="sw ours"></i> <b>+ KL-Cov</b></span></div>
+    <p class="tnote">The ~+2 pp gain is the informative part: with a gold reward anchoring training there is little
+    instability left to remove. Without that anchor, the same regularizer separates stability from total collapse.</p>
+  </div>
+
+  <!-- QUALITATIVE -->
+  <div class="panel reveal" id="examples">
+    <h2>What collapse actually looks like</h2>
+    <p class="sublede">The real saved completion from the collapsed checkpoint at step 240 — a template that is
+    confident, well-formatted, and never emits an answer.</p>
+    <p class="prob"><b>GSM8K problem 644 · gold answer 29</b>
+    Steve is 60 years old. His wife is 4 years older than him. Their son is currently half as old as his mom, and
+    their son's wife is 3 years younger than her husband. How old is Steve's son's wife?</p>
+    <div class="qgrid">
+      <div class="qcol bad">
+        <div class="qhead"><span>INTUITOR · step 240</span><span>no answer</span></div>
+        <div class="qbody" id="loopbox"></div>
+        <div class="qans">loops until the token budget runs out · <b class="f">pass@1 = 0.0%</b></div>
+      </div>
+      <div class="qcol good">
+        <div class="qhead"><span>CIRCA · step 240</span><span>correct</span></div>
+        <div class="qbody">
+          <p>To determine the age of Steve's son's wife, we need to follow these steps: identify Steve's age,
+          calculate his wife's age, determine their son's age, then calculate the son's wife's age.</p>
+          <p><strong>Step 1.</strong> Steve is currently 60 years old.</p>
+          <p><strong>Step 2.</strong> His wife is 4 years older: 60 + 4 = 64.</p>
+          <p><strong>Step 3.</strong> Their son is half as old as his mom: 64 ÷ 2 = 32.</p>
+          <p><strong>Step 4.</strong> The son's wife is 3 years younger: 32 − 3 =
+          <strong style="color:var(--ours)">29</strong>.</p>
+        </div>
+        <div class="qans">reasoning preserved · <b>pass@1 = 56.6%</b></div>
+      </div>
+    </div>
+    <p class="tnote">At this checkpoint there are 747 problems — 56.6% of the test set — where INTUITOR is wrong and
+    CIRCA is correct. Mean completion length 282 characters versus 1,260.</p>
+  </div>
+
+  <!-- BIBTEX -->
+  <div class="panel reveal" id="bibtex">
+    <h2>BibTeX</h2>
+    <div style="position:relative;max-width:48rem;margin:0 auto">
+      <button class="ghost" data-copy="bib" style="position:absolute;right:.7rem;top:.7rem">Copy</button>
+      <pre id="bib">@inproceedings{joarder2026two,
+  title     = {Two is better than one: A Collapse-Resistant
+               Multi-Reward {RLIF} Training Framework},
+  author    = {Joarder, Shourov and Sikdar, Diganta and
+               Akash, Ahsan Habib and Bhattarai, Binod and
+               Gyawali, Prashnna},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2026},
+  eprint    = {2605.22620},
+  archivePrefix = {arXiv}
+}</pre>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p class="ack"><b>Acknowledgments.</b> This work was supported by the Defense Advanced Research Projects
+  Agency (DARPA) under Grant AI-CRAFT AWD16069. This work was also supported as part of the Swiss AI
+  Initiative by a grant from the Swiss National Supercomputing Centre (CSCS) under project ID a168 on Alps.</p>
+  <p class="corr">Correspondence to
+  <a href="mailto:prashnna.gyawali@mail.wvu.edu">prashnna.gyawali@mail.wvu.edu</a>.</p>
+</footer>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  /* theme toggle: system by default, explicit choice wins and persists */
+  var root=document.documentElement, btn=document.getElementById('themeBtn');
+  var mq=window.matchMedia('(prefers-color-scheme: dark)');
+  try{var sv=localStorage.getItem('theme'); if(sv==='dark'||sv==='light') root.setAttribute('data-theme',sv);}catch(e){}
+  btn.addEventListener('click',function(){
+    var cur=root.getAttribute('data-theme')||(mq.matches?'dark':'light');
+    var next=cur==='dark'?'light':'dark';
+    root.setAttribute('data-theme',next);
+    try{localStorage.setItem('theme',next);}catch(e){}
+  });
+
+  /* tables */
+  var sb=document.getElementById('stab-body');
+  Object.keys(DATA.stability).forEach(function(scale){
+    var hr=document.createElement('tr'); hr.className='grp';
+    hr.innerHTML='<th colspan="6">'+scale+'</th>'; sb.appendChild(hr);
+    DATA.stability[scale].forEach(function(r){
+      var tr=document.createElement('tr');
+      if(r.cls==='ours')tr.className='ours'; if(r.cls==='intuitor')tr.className='fail';
+      tr.innerHTML='<th scope="row">'+r.m+'</th><td class="num">'+r.peak+'</td><td class="num">'+r.pstep+'</td>'+
+        '<td class="num'+(r.collapse.indexOf('—')===0?'':' zero')+'">'+r.collapse+'</td>'+
+        '<td class="num">'+r.end+'</td><td class="num'+(r.cls==='ours'?' best':'')+'">'+r.ret+'</td>';
+      sb.appendChild(tr);
+    });
+  });
+  var mt=document.getElementById('main-table');
+  mt.querySelector('thead').innerHTML='<tr><th>Method</th>'+DATA.main.cols.map(function(c){
+    return '<th class="num">'+c+'</th>';}).join('')+'</tr>';
+  var mb=mt.querySelector('tbody');
+  ['Qwen2.5-1.5B','Qwen2.5-3B'].forEach(function(scale){
+    var hr=document.createElement('tr'); hr.className='grp';
+    hr.innerHTML='<th colspan="6">'+scale+'</th>'; mb.appendChild(hr);
+    DATA.main[scale].forEach(function(r){
+      var tr=document.createElement('tr');
+      if(r.cls==='ours')tr.className='ours'; if(r.cls==='intuitor')tr.className='fail';
+      tr.innerHTML='<th scope="row">'+r.m+'</th>'+r.v.map(function(v,i){
+        var b=r.best&&r.best.indexOf(i)>=0;
+        return '<td class="num'+(b?' best':'')+'">'+v.toFixed(1)+'</td>';}).join('');
+      mb.appendChild(tr);
+    });
+  });
+})();
+</script>

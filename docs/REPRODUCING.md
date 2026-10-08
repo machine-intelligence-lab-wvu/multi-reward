@@ -105,7 +105,7 @@ machines:
 - Paper sources and figures
 
 Trajectory figures and the full result tables are on the
-[project page](https://shourovj.github.io/projects-sites/unsupervised-rl/).
+[project page](https://machine-intelligence-lab-wvu.github.io/multi-reward/).
 
 ## Caveats
 
