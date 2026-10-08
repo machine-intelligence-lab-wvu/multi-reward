@@ -1,0 +1,71 @@
+# B-6 (ICLR Tier 1): different model FAMILY — Llama-3.2-3B, INTUITOR arm.
+# Mirrors rebuttal_local48g/A2_qwen3_17b_intuitor.yaml (the paper's Qwen3
+# protocol) with only model / chat template / batch geometry changed, and
+# matches B6_llama32_3b_full.yaml on everything but the reward signal.
+#
+# GATED MODEL: accept the Meta license on HF and export HF_TOKEN before launch.
+# Launch:
+#   GPUS=4 bash open_r1_imp/scripts/rebuttal/launch.sh B6_llama32_3b_intuitor
+model_name_or_path: meta-llama/Llama-3.2-3B
+model_revision: main
+dtype: bfloat16
+attn_implementation: flash_attention_2
+use_peft: false
+dataset_name: DigitalLearningGmbH/MATH-lighteval
+dataset_prompt_column: problem
+system_prompt: 'You are a helpful AI Assistant, designed to provided well-reasoned and detailed responses. You FIRST think about the reasoning process step by step and then provide the user with the answer. Please enclose your final answer in the box: \boxed{Your Answer}. Please stop generation immediately after outputing the box.'
+# Same base-model template as the full arm — see B6_llama32_3b_full.yaml.
+chat_template: "{% if messages[0]['role'] == 'system' %}{{ messages[0]['content'] }}\n\n{% endif %}{% for message in messages %}{% if message['role'] == 'user' %}Problem: {{ message['content'] }}{% endif %}{% endfor %}{% if add_generation_prompt %}\n\nSolution:{% endif %}"
+bf16: true
+beta: 0.005
+use_vllm: true
+do_eval: false
+learning_rate: 3.0e-06
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+epsilon: 0.2
+temperature: 1.0
+max_grad_norm: 1.0
+max_completion_length: 3072
+num_generations: 7
+# mu=2 to MATCH the B6_llama32_3b_full arm's update scheme, not because this
+# arm uses KL-Cov (beta_cov=0 here). With mu=1 vs mu=2 the two arms would
+# differ in on-/off-policy update scheme as well as reward signal, so a B-6
+# difference could not be attributed to the method (same reasoning as A2).
+num_iterations: 2
+num_train_epochs: 1
+# 4-GPU shape: 3 * 14 * 21 = 882 effective batch (matches the full arm).
+per_device_train_batch_size: 14
+gradient_accumulation_steps: 21
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+max_steps: 200
+log_completions: false
+log_level: info
+logging_first_step: true
+logging_steps: 1
+logging_strategy: steps
+report_to:
+- wandb
+save_strategy: steps
+save_steps: 20
+save_total_limit: 50
+seed: 7
+push_to_hub: false
+thinking: false
+overwrite_output_dir: false
+eval_accuracy_steps: 0
+eval_accuracy_dataset: math500
+eval_accuracy_samples: 50
+output_dir: ${MR_SCRATCH}/outputs/rebuttal/B6_llama32_3b_intuitor
+run_name: b6-llama32-3b-intuitor
+reward_funcs:
+- cluster_voting
+- boxed_format
+reward_weights:
+- 0.0
+- 0.0
+beta_cov: 0.0
+min_completion_tokens: 0
+sc_batch_size: 4

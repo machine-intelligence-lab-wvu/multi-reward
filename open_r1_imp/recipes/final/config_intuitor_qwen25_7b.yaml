@@ -1,0 +1,101 @@
+# ════════════════════════════════════════════════════════════════
+# INTUITOR — Paper reproduction on Qwen2.5-7B (rebuttal)
+# "Learning to Reason without External Rewards" (Zhao et al., 2025)
+# Mirrors the 3B `config_intuitor_qwen25_3b.yaml` recipe at 7B scale.
+# Plain Intuitor — no KL-Cov, matching the trajectory comparator.
+#
+# Cluster: 1 node Clariden GH200 120GB
+#   GPU 0   = vLLM
+#   GPUs 1-3 = ZeRO-3 training
+#
+# Effective batch = per_device(7) × grad_accum(42) × 3 GPUs = 882
+# per_device must be a multiple of num_generations (7).
+# ════════════════════════════════════════════════════════════════
+
+# ── Model ──
+model_name_or_path: Qwen/Qwen2.5-7B
+model_revision: main
+dtype: bfloat16
+attn_implementation: flash_attention_2
+
+use_peft: false
+
+# ── Dataset ──
+dataset_name: DigitalLearningGmbH/MATH-lighteval
+dataset_prompt_column: problem
+
+# ── System prompt ──
+system_prompt: "You are a helpful AI Assistant, designed to provided well-reasoned and detailed responses. You FIRST think about the reasoning process step by step and then provide the user with the answer. Please enclose your final answer in the box: \\boxed{Your Answer}. Please stop generation immediately after outputing the box."
+
+# ── Reward functions (logged only — INTUITOR uses self-certainty) ──
+reward_funcs:
+  - cluster_voting
+  - boxed_format
+reward_weights:
+  - 0.0
+  - 0.0
+
+# ── GRPO hyperparameters ──
+bf16: true
+beta: 0.005
+use_vllm: true
+do_eval: false
+learning_rate: 3.0e-06
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+temperature: 1.0
+epsilon: 0.2
+max_completion_length: 3072
+num_generations: 7
+num_train_epochs: 1
+max_steps: 340
+num_iterations: 1
+
+gradient_accumulation_steps: 42
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+per_device_train_batch_size: 7
+max_grad_norm: 1.0
+
+# ── Output ──
+output_dir: ${MR_OUTPUT_DIR}/intuitor_qwen25_7b
+overwrite_output_dir: false
+
+# ── Logging ──
+log_completions: false
+log_level: info
+logging_first_step: true
+logging_steps: 1
+logging_strategy: steps
+run_name: intuitor-qwen25-7b-rebuttal
+report_to:
+  - wandb
+
+# ── Checkpointing ──
+save_strategy: steps
+save_steps: 20
+save_total_limit: 25
+seed: 7
+
+# ── Hub ──
+push_to_hub: false
+hub_model_id: shourovj/intuitor-grpo
+hub_strategy: checkpoint
+hub_private_repo: true
+hub_push_every_n_steps: 100
+
+# ── INTUITOR-specific ──
+thinking: false
+min_completion_tokens: 0
+sc_batch_size: 2
+
+# # ── KL-Cov (exploration boost) ──
+# beta_cov: 0
+# top_k_fraction: 0
+# entropy_bonus: 0.0
+
+# ── In-training eval ──
+eval_accuracy_steps: 0
+eval_accuracy_dataset: gsm8k
+eval_accuracy_samples: 200

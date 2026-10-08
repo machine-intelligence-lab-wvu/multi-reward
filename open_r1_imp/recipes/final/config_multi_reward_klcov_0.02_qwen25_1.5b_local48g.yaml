@@ -1,0 +1,97 @@
+# Multi-Reward GRPO — Full Fine-Tuning Qwen2.5-1.5B + KL-Cov=0.02
+# LOCAL variant of config_multi_reward_klcov_0.02_qwen25_1.5b.yaml for the
+# WVU workstation: 4 × RTX PRO 5000 Blackwell 48GB (GPU 0 = vLLM, GPUs 1-3 = ZeRO-3).
+#
+# Only three things differ from the Clariden config:
+#   1. per_device 21 -> 7 and grad_accum 14 -> 42. The 48GB cards cannot hold the
+#      (B, S, V) logits tensor of _forward_with_entropy at B=21, S=3072, V=151936
+#      (~19.6 GB per copy). Effective batch is unchanged:
+#         21 x 14 x 3 = 882  ==  7 x 42 x 3 = 882
+#      so the optimization math is identical, generation just happens in more chunks.
+#      Requires accelerate_configs/zero3_grad42.yaml (grad_accum must match).
+#   2. output_dir points at local disk instead of /capstor.
+#   3. attn_implementation left as flash_attention_2; the launcher falls back to
+#      sdpa via --attn_implementation if flash-attn has no sm_120 kernels.
+# Effective batch = per_device(7) × grad_accum(42) × 3 GPUs = 882
+
+# Model
+model_name_or_path: Qwen/Qwen2.5-1.5B
+model_revision: main
+dtype: bfloat16
+attn_implementation: flash_attention_2
+
+# Full fine-tuning (no LoRA)
+use_peft: false
+
+# Dataset
+dataset_name: DigitalLearningGmbH/MATH-lighteval
+dataset_prompt_column: problem
+
+# System prompt
+system_prompt: "You are a helpful AI Assistant, designed to provided well-reasoned and detailed responses. You FIRST think about the reasoning process step by step and then provide the user with the answer. Please enclose your final answer in the box: \\boxed{Your Answer}. Please stop generation immediately after outputing the box."
+
+# Reward functions (reward_weights set in MultiRewardTrainer from w_cluster/w_format)
+reward_funcs:
+  - cluster_voting
+  - boxed_format
+
+# GRPO Training
+bf16: true
+beta: 0.005
+use_vllm: true
+do_eval: false
+gradient_accumulation_steps: 42
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+learning_rate: 3.0e-06         # matched to Intuitor klcov
+epsilon: 0.2                   # PPO clip range (explicit)
+log_completions: false
+log_level: info
+logging_first_step: true
+logging_steps: 1
+logging_strategy: steps
+lr_scheduler_type: cosine
+max_completion_length: 3072
+max_steps: 500
+num_generations: 7
+num_train_epochs: 1
+num_iterations: 1
+output_dir: /home/WVU-AD/aa00307/projects/unsupervised-rl/outputs/multi_reward_final_klcov_0.02_qwen25_1.5b
+overwrite_output_dir: false
+per_device_train_batch_size: 7
+
+push_to_hub: false
+hub_model_id: shourovj/multi-reward-grpo
+hub_strategy: checkpoint
+hub_private_repo: true
+hub_push_every_n_steps: 100
+
+run_name: multi-reward-final-klcov(0.02)-qwen25-1.5b-local
+report_to:
+  - wandb
+save_strategy: steps
+save_steps: 20
+save_total_limit: 25
+seed: 7
+warmup_ratio: 0.1
+max_grad_norm: 1.0
+temperature: 1.0
+
+# Multi-reward GDPO channel weights
+w_cluster_format: 0.5
+w_selfcert: 0.5
+w_cluster: 0.5
+w_format: 0.1
+
+# KL-Cov
+beta_cov: 0.02
+top_k_fraction: 0.02
+entropy_bonus: 0.0
+thinking: false
+min_completion_tokens: 0       # 0 = disabled (matches Intuitor)
+
+# In-training accuracy eval disabled (set >0 to enable)
+eval_accuracy_steps: 0
+eval_accuracy_dataset: gsm8k
+eval_accuracy_samples: 200

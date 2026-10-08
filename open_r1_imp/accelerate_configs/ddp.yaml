@@ -1,0 +1,28 @@
+# Plain DDP — no DeepSpeed
+# Used by the LoRA gradient-correlation probe: DeepSpeed ZeRO registers
+# post-backward hooks that crash on side `torch.autograd.grad` calls
+# (IndexError in stage_1_and_2.reduce_ipg_grads). Plain DDP has no such hooks,
+# so the second/third backward in multi_reward_trainer.py:_compute_loss
+# (cf and sc surrogates with retain_graph=True) works as designed.
+#
+# Memory check (Qwen2.5-1.5B + LoRA r=64 all-linear on GH200 96GB):
+#   base bf16 weights ~3GB, LoRA params ~30M (~60MB), Adam state ~240MB,
+#   activations + retain_graph dominate but stay well under budget.
+#
+# gradient_accumulation_steps is read from TrainingArguments (yaml = 42),
+# not from the accelerate config — so no batch-size assertion mismatch.
+compute_environment: LOCAL_MACHINE
+debug: false
+distributed_type: MULTI_GPU
+downcast_bf16: "no"
+machine_rank: 0
+main_training_function: main
+mixed_precision: bf16
+num_machines: 1
+num_processes: 3
+rdzv_backend: static
+same_network: true
+tpu_env: []
+tpu_use_cluster: false
+tpu_use_sudo: false
+use_cpu: false

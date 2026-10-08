@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper below."
+title: "Multi-Reward RLIF (CIRCA)"
+abstract: >-
+  A collapse-resistant multi-reward framework for reinforcement learning from
+  internal feedback, combining an answer-level cluster-voting reward with a
+  completion-level self-certainty reward under per-channel GDPO normalization
+  and covariance-aware KL regularization (KL-Cov).
+authors:
+  - family-names: Joarder
+    given-names: Shourov
+  - family-names: Sikdar
+    given-names: Diganta
+  - family-names: Akash
+    given-names: Ahsan Habib
+  - family-names: Bhattarai
+    given-names: Binod
+  - family-names: Gyawali
+    given-names: Prashnna
+license: Apache-2.0
+repository-code: "https://github.com/machine-intelligence-lab-wvu/multi-reward"
+url: "https://shourovj.github.io/projects-sites/unsupervised-rl/"
+preferred-citation:
+  type: conference-paper
+  title: >-
+    Two is better than one: A Collapse-Resistant Multi-Reward RLIF Training
+    Framework
+  authors:
+    - family-names: Joarder
+      given-names: Shourov
+    - family-names: Sikdar
+      given-names: Diganta
+    - family-names: Akash
+      given-names: Ahsan Habib
+    - family-names: Bhattarai
+      given-names: Binod
+    - family-names: Gyawali
+      given-names: Prashnna
+  collection-title: "Advances in Neural Information Processing Systems (NeurIPS)"
+  year: 2026
+  url: "https://arxiv.org/abs/2605.22620"

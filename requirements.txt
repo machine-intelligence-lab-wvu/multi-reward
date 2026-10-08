@@ -1,0 +1,56 @@
+# ─────────────────────────────────────────────────────────────────────────
+# Working environment on PSC Bridges-2 (RHEL 8, glibc 2.28, Python 3.12).
+# Pinned to a coherent CUDA-12.6 stack because Bridges-2's newest CUDA
+# toolkit module is 12.6.1 (no CUDA 13), which is also what flash-attn needs.
+#
+# INSTALL ORDER (do NOT just `pip install -r`):
+#   module load anaconda3/2024.10-1 cuda/12.6.1
+#   # 1) torch first, from the cu126 index:
+#   pip install --only-binary=:all: torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 \
+#       --index-url https://download.pytorch.org/whl/cu126
+#   # 2) vllm (must keep torch 2.7.0):
+#   pip install --only-binary=:all: vllm==0.9.1
+#   # 3) the rest of this file:
+#   pip install -r requirements.txt
+#   # 4) flash-attn — see docs note below (built from source + ELF-patched
+#   #    for glibc 2.28; a plain `pip install flash-attn` will NOT load here).
+# ─────────────────────────────────────────────────────────────────────────
+
+# torch/torchvision/torchaudio installed above from the cu126 index — do not
+# re-pin here or pip will fight vllm over the exact build.
+
+vllm==0.9.1
+transformers==4.53.2        # <4.54 required: vllm 0.9.1 breaks on 4.54+ (aimv2)
+trl==0.19.1                 # 0.19.x needs transformers <4.54 too (1.9.x needs 4.56+)
+peft==0.19.1
+accelerate==1.14.0
+deepspeed==0.19.3
+datasets==5.0.0
+sympy==1.14.0
+wandb
+pandas
+tqdm
+omegaconf
+hydra-core
+matplotlib
+pytest
+
+# math reward + eval scoring (install into the same venv):
+#   pip install math-verify latex2sympy2-extended
+
+# verl[vllm] — REMOVED: not imported anywhere in this repo, and it pins
+# vllm/transformers to versions that would break this stack.
+
+# ── flash-attn 2.8.3 on Bridges-2 (glibc 2.28) ────────────────────────────
+# Prebuilt wheels require glibc>=2.32 and will NOT load. It must be built
+# from source, and the resulting .so references __libc_single_threaded
+# (GLIBC_2.32, emitted by the Anaconda toolchain) which glibc 2.28 lacks.
+# Fix applied (already done in the urL venv):
+#   1. build from source:  MAX_JOBS=4 pip install flash-attn==2.8.3 \
+#          --no-build-isolation --no-cache-dir --no-binary flash-attn
+#   2. patchelf --clear-symbol-version __libc_single_threaded <flash_attn_2_cuda.so>
+#   3. rewrite its Verneed GLIBC_2.32 entry -> GLIBC_2.14
+#   4. compile a tiny shim: `char __libc_single_threaded = 0;` -> libsinglethreaded_shim.so
+#      place next to the .so and: patchelf --add-needed libsinglethreaded_shim.so \
+#          --add-rpath '$ORIGIN' <flash_attn_2_cuda.so>
+# Scripts for this live in ${MR_SCRATCH}

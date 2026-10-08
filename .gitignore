@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.python-version
+
+# Training / evaluation artifacts
+outputs/
+checkpoints/
+eval_results/
+eval_results_*/
+wandb/
+logs/
+*.log
+
+# Data
+data/gsm8k/
+data/math/
+data/dapo/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
