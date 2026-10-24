@@ -46,17 +46,6 @@ def extract_boxed(text: str) -> Optional[str]:
     return None
 
 
-def extract_answer_after_think(text: str) -> str:
-    """For thinking-mode models, return the text after the last </think>.
-
-    If no </think> is found, return the full text.
-    """
-    idx = text.rfind("</think>")
-    if idx == -1:
-        return text
-    return text[idx + len("</think>"):]
-
-
 def extract_integer(text: str) -> Optional[int]:
     """Extract an integer answer (for AIME-style numeric-only problems).
 

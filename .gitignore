@@ -8,17 +8,12 @@ venv/
 
 # Training / evaluation artifacts
 outputs/
-checkpoints/
-eval_results/
-eval_results_*/
+results/
+figures/
 wandb/
 logs/
 *.log
-
-# Data
-data/gsm8k/
-data/math/
-data/dapo/
+.pytest_cache/
 
 # OS / editor
 .DS_Store

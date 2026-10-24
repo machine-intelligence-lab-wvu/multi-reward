@@ -1,18 +1,17 @@
-"""Statistical rigor pass for ICLR-TODO T0.2.
+"""Wilson 95% CIs and exact McNemar tests from the per-item eval records.
 
-Computes, from the per-item records saved in eval-rebuttal-results/:
-  * Wilson 95% confidence intervals for every run/checkpoint/task accuracy;
-  * exact McNemar tests (two-sided binomial on discordant pairs) for paired
-    method comparisons at matched checkpoints.
+Reads the JSONs written by evaluation/run_task.py (via scripts/eval.sh):
+  {results_dir}/{method}_ckpt{step}/{method}_ckpt{step}__{task}.json
+and reports
+  * a Wilson 95% confidence interval for every run/checkpoint/task accuracy;
+  * an exact McNemar test (two-sided binomial on discordant pairs) for each
+    paired comparison at matched checkpoints.
 
-No GPU, no checkpoints needed - only the eval JSONs already in the repo.
-
-Usage:
-    python evaluation/significance.py [--results-dir eval-rebuttal-results]
-                                      [--out-csv eval-rebuttal-results/significance_all.csv]
-
-Outputs a full CSV plus a markdown summary (printed to stdout) for the
-checkpoints referenced in the paper.
+Defaults reproduce the paper's appendix tests:
+    python evaluation/significance.py --results-dir results/qwen3-1.7b --step 200
+    python evaluation/significance.py --results-dir results/qwen2.5-1.5b --step 200 \
+        --compare grpo_gt_klcov:grpo_gt_noklcov:"GRPO-GT+KL-Cov vs GRPO-GT"
+No GPU needed.
 """
 
 import argparse
@@ -24,11 +23,10 @@ from collections import defaultdict
 from pathlib import Path
 
 # Paired comparisons: (run_a, run_b, label). Positive McNemar direction = a beats b.
-COMPARISONS = [
-    ("a2_full", "a2_intuitor", "Qwen3-1.7B: ours vs INTUITOR"),
-    ("a2_full", "a2_grpo_gt", "Qwen3-1.7B: ours vs GRPO-GT (sup.)"),
-    ("a2_intuitor", "a2_grpo_gt", "Qwen3-1.7B: INTUITOR vs GRPO-GT (sup.)"),
-    ("a4_klcov", "a4_noklcov", "Qwen2.5-1.5B: GRPO-GT+KL-Cov vs GRPO-GT"),
+DEFAULT_COMPARISONS = [
+    ("multi_reward_klcov", "intuitor", "ours vs INTUITOR"),
+    ("multi_reward_klcov", "grpo_gt", "ours vs GRPO-GT (sup.)"),
+    ("intuitor", "grpo_gt", "INTUITOR vs GRPO-GT (sup.)"),
 ]
 
 RUN_RE = re.compile(r"^(?P<run>.+?)_ckpt(?P<ckpt>\d+)$")
@@ -100,9 +98,19 @@ def load_results(results_dir):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--results-dir", default="eval-rebuttal-results")
-    ap.add_argument("--out-csv", default="eval-rebuttal-results/significance_all.csv")
+    ap.add_argument("--results-dir", required=True)
+    ap.add_argument("--out-csv", default=None, help="default: {results-dir}/significance.csv")
+    ap.add_argument("--compare", action="append", default=None, metavar="RUN_A:RUN_B[:LABEL]",
+                    help="paired comparison (repeatable); default: ours/INTUITOR/GRPO-GT pairs")
+    ap.add_argument("--step", type=int, default=200, help="checkpoint shown in the markdown summary")
     args = ap.parse_args()
+    comparisons = DEFAULT_COMPARISONS
+    if args.compare:
+        comparisons = []
+        for spec in args.compare:
+            parts = spec.split(":", 2)
+            comparisons.append((parts[0], parts[1], parts[2] if len(parts) > 2 else f"{parts[0]} vs {parts[1]}"))
+    args.out_csv = args.out_csv or str(Path(args.results_dir) / "significance.csv")
 
     res = load_results(args.results_dir)
 
@@ -121,7 +129,7 @@ def main():
     by_run = defaultdict(dict)
     for (run, ckpt, task), r in res.items():
         by_run[run][(ckpt, task)] = r
-    for run_a, run_b, label in COMPARISONS:
+    for run_a, run_b, label in comparisons:
         keys = sorted(set(by_run[run_a]) & set(by_run[run_b]))
         for (ckpt, task) in keys:
             ra, rb = by_run[run_a][(ckpt, task)], by_run[run_b][(ckpt, task)]
@@ -142,6 +150,8 @@ def main():
 
     # ---- write CSV ------------------------------------------------------------
     out = Path(args.out_csv)
+    if not ci_rows:
+        raise SystemExit(f"No eval JSONs found under {args.results_dir}")
     with out.open("w", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["# Wilson 95% CIs"])
@@ -150,24 +160,24 @@ def main():
             w.writerow(r.values())
         w.writerow([])
         w.writerow(["# Exact McNemar (paired, discordant-pair binomial)"])
-        w.writerow(mc_rows[0].keys())
+        w.writerow(mc_rows[0].keys() if mc_rows else [])
         for r in mc_rows:
             w.writerow(r.values())
     print(f"Wrote {out} ({len(ci_rows)} CI rows, {len(mc_rows)} McNemar rows)\n")
 
     # ---- markdown summary: final checkpoints ----------------------------------
-    print("## Wilson 95% CIs at step 200 (and base models)\n")
+    print(f"## Wilson 95% CIs at step {args.step} (and base models)\n")
     print("| run | task | acc % | 95% CI |")
     print("|---|---|---|---|")
     for r in ci_rows:
-        if r["ckpt"] in (200, -1):
+        if r["ckpt"] in (args.step, -1):
             print(f"| {r['run']} | {r['task']} | {r['acc']} | [{r['ci_lo']}, {r['ci_hi']}] |")
 
-    print("\n## Exact McNemar at step 200\n")
+    print(f"\n## Exact McNemar at step {args.step}\n")
     print("| comparison | task | acc A | acc B | A-only | B-only | p (exact) |")
     print("|---|---|---|---|---|---|---|")
     for r in mc_rows:
-        if r["ckpt"] == 200:
+        if r["ckpt"] == args.step:
             print(f"| {r['comparison']} | {r['task']} | {r['acc_a']} | {r['acc_b']} "
                   f"| {r['a_only']} | {r['b_only']} | {r['p_exact']} |")
 

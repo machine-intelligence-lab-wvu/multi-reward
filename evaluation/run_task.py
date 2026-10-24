@@ -1,16 +1,14 @@
-"""Single-GPU runner. Loads vLLM once, evaluates a checkpoint on N tasks.
+"""Evaluate one checkpoint on several benchmarks with vLLM (the pipeline behind the paper's numbers).
 
-Usage:
-  CUDA_VISIBLE_DEVICES=0 python evaluation/run_task.py \
-      --checkpoint /path/to/checkpoint-300 \
-      --run_name multi_reward_base_ckpt300 \
-      --tasks gsm8k,math500,math,aime2024,aime2025,mmlu_pro \
-      --output_dir evaluation_results/best_ckpts_v1
+  python evaluation/run_task.py \
+      --checkpoint outputs/qwen2.5-1.5b_multi_reward_klcov/checkpoint-160 \
+      --run_name multi_reward_klcov_ckpt160 \
+      --tasks gsm8k,math500,mmlu_pro,aime2024,aime2025,lcb,cruxeval_o \
+      --output_dir results/qwen2.5-1.5b
 
-Writes one JSON per (run, task) at
-  {output_dir}/{run_name}/{task}.json
-
-Skips tasks whose JSON already exists (idempotent) unless --overwrite.
+Writes {output_dir}/{run_name}/{run_name}__{task}.json with per-item records.
+Tasks whose JSON already exists are skipped unless --overwrite.
+scripts/eval.sh runs this over every checkpoint of a training run.
 """
 
 import argparse
@@ -19,7 +17,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import List
+
 
 # vLLM must be imported after CUDA_VISIBLE_DEVICES is set in env
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -32,10 +30,7 @@ TRAINING_SYSTEM_PROMPT = (
     "Please stop generation immediately after outputing the box."
 )
 
-# Fallback for BASE models that ship no chat template (meta-llama/Llama-3.2-3B).
-# Must stay identical to `chat_template:` in recipes/rebuttal/B6_llama32_3b_*.yaml.
-# B6 CHECKPOINTS need no fallback: training saves the template into their
-# tokenizer_config (open_r1_imp/utils.get_tokenizer).
+# Fallback for models that ship no chat template (all Qwen models used here have one).
 BASE_MODEL_CHAT_TEMPLATE = (
     "{% if messages[0]['role'] == 'system' %}{{ messages[0]['content'] }}\n\n"
     "{% endif %}{% for message in messages %}{% if message['role'] == 'user' %}"
@@ -51,8 +46,8 @@ def parse_args():
     p.add_argument("--run_name", required=True,
                    help="Short identifier used in output directory and logs")
     p.add_argument("--tasks", required=True,
-                   help="Comma-separated task names (gsm8k,math500,math,aime2024,aime2025,mmlu_pro)")
-    p.add_argument("--output_dir", default="evaluation_results/best_ckpts_v1")
+                   help="Comma-separated tasks: gsm8k,math500,mmlu_pro,aime2024,aime2025,lcb,cruxeval_o")
+    p.add_argument("--output_dir", default="results")
     p.add_argument("--task_output_dir_template", default=None,
                    help="Optional .format template for per-task output dir, "
                         "e.g. 'evaluation_results/accuracy_trajectory_{task}_qwen3b'. "
@@ -71,6 +66,8 @@ def parse_args():
     p.add_argument("--temperature", type=float, default=0.0)
     p.add_argument("--top_p", type=float, default=1.0)
     p.add_argument("--n_samples", type=int, default=1)
+    p.add_argument("--seed", type=int, default=None,
+                   help="Sampling seed for vLLM (only matters with --temperature > 0).")
     p.add_argument("--max_new_tokens_override", type=int, default=None,
                    help="Override task.max_new_tokens (e.g. for AIME at T=1 where "
                         "8k traces are common). Default: use the task's default.")
@@ -84,9 +81,9 @@ def parse_args():
                    help="Re-run tasks even if output JSON exists")
     p.add_argument("--wandb", action="store_true",
                    help="Log results to wandb")
-    p.add_argument("--wandb_project", default="unsupervised-rl-eval",
+    p.add_argument("--wandb_project", default="multi-reward-eval",
                    help="wandb project name")
-    p.add_argument("--wandb_group", default="best_ckpts_v1",
+    p.add_argument("--wandb_group", default="eval",
                    help="wandb group name (groups all runs from one eval sweep)")
     p.add_argument("--trajectory", action="store_true",
                    help="Trajectory mode: treat run_name as '{method}_ckpt{step}' and "
@@ -300,6 +297,7 @@ def _run_one_task(task_name: str, llm, tokenizer, args, out_dir: Path,
         top_p=args.top_p,
         max_tokens=max_tok,
         min_tokens=task.min_new_tokens,
+        seed=args.seed,
     )
 
     t0 = time.time()

@@ -1,34 +1,15 @@
-"""Plot single-vs-multi reward ablation trajectories.
+"""Single- vs multi-reward figure (no KL-Cov), Qwen2.5-1.5B: cluster_only,
+intuitor and multi_reward.
 
-Compares three Qwen2.5-1.5B runs:
-  - cluster_only         (single reward: cluster-only)
-  - intuitor             (single reward: self-certainty only)
-  - multi_reward_final   (multi-reward, no KL-Cov)
+Reads eval JSONs from --base (scripts/eval.sh output) and completion length /
+entropy from the training runs' trainer_state.json under --train-dir.
 
-Reads:
-  - JSONs under  eval_results_final/single_multi_reward_ablation/{method}_ckptXXX/   (accuracy)
-  - CSV         cluster_self-certainty_multi-reward_mean_completion.csv              (completion length)
-  - CSV         cluster_self-certainty_multi-reward_mean_entropy.csv                 (entropy)
-
-Usage:
-  # 1x3 accuracy panel (GSM8K / MATH500 / MMLU-Pro):
-  python plot_trajectory.py --panel
-
-  # Mean completion length:
-  python plot_trajectory.py --completion
-
-  # Mean entropy:
-  python plot_trajectory.py --entropy
-
-  # Single accuracy task:
-  python plot_trajectory.py --task gsm8k
-
-  # 2x3 paper panel (3 accuracy + completion + entropy + shared legend):
-  python plot_trajectory.py --paper-panel
+  python evaluation/paper_figures/plot_single_multi_reward.py --paper-panel \
+      --base results/qwen2.5-1.5b --train-dir outputs --paper-panel-out figures/single_multi_reward.pdf
+  # other modes: --panel, --completion, --entropy, --task gsm8k
 """
 
 import argparse
-import csv
 import json
 import re
 from collections import defaultdict
@@ -40,6 +21,7 @@ import matplotlib.pyplot as plt
 # paper maps a method to the same appearance (see evaluation/paper_figures/palette.py).
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
+from train_logs import load_metric as _load_metric
 from palette import label_color as _label_color, line_kw as _line_kw
 
 
@@ -48,32 +30,15 @@ DEFAULT_BASE = Path(__file__).resolve().parent
 MAX_STEP_DEFAULT = 280
 STRIDE_DEFAULT = 20
 
-# Method keys here MUST match the directory names produced by the orchestrator
-# (orchestrate.py expands TRAJECTORY_METHODS into "{method}_ckpt{step:03d}/").
-STYLE_BY_METHOD = {k: _label_color(k) for k in (
-    "cluster_only",
-    "intuitor",
-    "multi_reward_final",
-)}
+# Run names (recipe names, as written by scripts/eval.sh); older names also work.
+ORDER = ["cluster_only", "intuitor", "multi_reward", "multi_reward_final"]
+STYLE_BY_METHOD = {k: _label_color(k) for k in ORDER}
 
-# Plotting / legend order. Missing methods are skipped automatically.
-ORDER = [
-    "cluster_only",
-    "intuitor",
-    "multi_reward_final",
-]
-
-# Map run names that appear in the wandb-export CSVs to method keys.
-CSV_RUN_TO_METHOD = {
-    "cluster-only-noklcov-qwen25-1.5b":         "cluster_only",
-    "multi-reward-final-noklcov-qwen25-1.5b":   "multi_reward_final",
-    "run2_intuitor-qwen25-15b (betakl-0.005)":  "intuitor",
-}
 
 # Per-metric style: (csv_column_suffix, y_axis_label, plot_title_fragment).
 METRICS = {
-    "completion": ("train/completions/mean_length", "Mean completion length (tokens)", "mean completion length"),
-    "entropy":    ("train/entropy",                 "Mean entropy",                    "mean entropy"),
+    "completion": ("completions/mean_length", "Mean completion length (tokens)", "mean completion length"),
+    "entropy":    ("entropy",                 "Mean entropy",                    "mean entropy"),
 }
 
 
@@ -109,50 +74,14 @@ def collect_accuracy(base: Path, task: str, max_step: int):
     return out
 
 
-def collect_metric(csv_path: Path, metric_col: str, max_step: int, stride: int):
-    """Return {method: [(global_step, value), ...]} sampled at multiples of `stride`.
-
-    Both wandb CSVs in this folder include a true `train/global_step` column
-    (1-indexed: row N has train/global_step == N), so no rescaling is needed.
-    We filter rows where train/global_step is a multiple of `stride` and within
-    [stride, max_step]. The first checkpoint (step == stride) is always included.
-    """
-    out = defaultdict(list)
-    if not csv_path.exists():
-        return out
-
-    targets = set(range(stride, max_step + 1, stride))
-
-    with csv_path.open() as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            try:
-                gs = int(float(row["train/global_step"]))
-            except (KeyError, TypeError, ValueError):
-                continue
-            if gs not in targets:
-                continue
-            for run, method in CSV_RUN_TO_METHOD.items():
-                key = f"{run} - {metric_col}"
-                if key not in row:
-                    continue
-                val_str = (row[key] or "").strip()
-                if not val_str:
-                    continue
-                try:
-                    val = float(val_str)
-                except ValueError:
-                    continue
-                out[method].append((gs, val))
-
-    for method in out:
-        # Deduplicate (a step should appear at most once per run anyway).
-        seen = {}
-        for s, v in out[method]:
-            seen.setdefault(s, v)
-        out[method] = sorted(seen.items())
+def collect_metric(train_dir: Path, metric_col: str, max_step: int, stride: int):
+    """{method: [(step, value), ...]} every `stride` steps, from the runs' trainer_state.json."""
+    out = {}
+    for method in ORDER:
+        pts = _load_metric(train_dir, method, metric_col, max_step=max_step, stride=stride)
+        if pts:
+            out[method] = pts
     return out
-
 
 def _parse_exclude(exclude: str):
     return {m.strip() for m in exclude.split(",") if m.strip()}
@@ -184,7 +113,7 @@ def _plot_single_task(base: Path, task: str, out_path: Path, model_label: str,
 
     ax.set_xlabel("Training step", fontsize=16)
     ax.set_ylabel(f"{task} accuracy (pass@1, greedy)", fontsize=16)
-    ax.set_title(f"Single-reward vs CIRCA - {model_label} ({task})", fontsize=18)
+    ax.set_title(f"Single-reward vs multi-reward - {model_label} ({task})", fontsize=18)
     ax.tick_params(axis="both", labelsize=14)
     ax.grid(True, alpha=0.3)
     ax.legend(loc="lower right", fontsize=13)
@@ -234,7 +163,7 @@ def _plot_panel(base: Path, tasks, out_path: Path, model_label: str,
         ax.set_ylim(0, None)
         ax.set_xlim(0, max_step)
 
-    fig.suptitle(f"Single-reward vs CIRCA accuracy trajectories - {model_label}",
+    fig.suptitle(f"Single-reward vs multi-reward accuracy trajectories - {model_label}",
                  y=0.99, fontsize=21)
     if legend_items:
         labels = list(legend_items.keys())
@@ -270,7 +199,7 @@ def _plot_metric(csv_path: Path, metric_key: str, out_path: Path,
 
     ax.set_xlabel("Training step", fontsize=16)
     ax.set_ylabel(ylabel, fontsize=16)
-    ax.set_title(f"Single-reward vs CIRCA - {title_frag} ({model_label})", fontsize=18)
+    ax.set_title(f"Single-reward vs multi-reward - {title_frag} ({model_label})", fontsize=18)
     ax.tick_params(axis="both", labelsize=14)
     ax.grid(True, alpha=0.3)
     ax.legend(loc="best", fontsize=13)
@@ -393,12 +322,8 @@ def main():
                     help="Plot mean completion length vs training step")
     ap.add_argument("--entropy", action="store_true",
                     help="Plot mean entropy vs training step")
-    ap.add_argument("--completion-csv",
-                    default="cluster_self-certainty_multi-reward_mean_completion.csv",
-                    help="Completion-length CSV (relative to --base)")
-    ap.add_argument("--entropy-csv",
-                    default="cluster_self-certainty_multi-reward_mean_entropy.csv",
-                    help="Entropy CSV (relative to --base)")
+    ap.add_argument("--train-dir", default="outputs",
+                    help="directory holding the training run folders (for length / entropy)")
     ap.add_argument("--max-step", type=int, default=MAX_STEP_DEFAULT,
                     help=f"Cap the x-axis at this training step (default {MAX_STEP_DEFAULT})")
     ap.add_argument("--stride", type=int, default=STRIDE_DEFAULT,
@@ -416,11 +341,10 @@ def main():
 
     if args.paper_panel:
         tasks = [t.strip() for t in args.panel_tasks.split(",") if t.strip()]
-        completion_csv = (base / args.completion_csv).resolve()
-        entropy_csv    = (base / args.entropy_csv).resolve()
-        repo_root = base.parent.parent  # eval_results_final/single_multi_reward_ablation -> repo
+        completion_csv = Path(args.train_dir).resolve()
+        entropy_csv    = Path(args.train_dir).resolve()
         out_path = Path(args.paper_panel_out) if args.paper_panel_out else \
-            repo_root / "paper" / "figures" / "ablation" / "single_multi_reward_plot.pdf"
+            Path("figures") / "single_multi_reward_plot.pdf"
         _plot_paper_panel(base, completion_csv, entropy_csv, tasks, out_path,
                           args.model_label, excluded, args.max_step, args.stride)
         if out_path.suffix == ".pdf":
@@ -430,7 +354,7 @@ def main():
         return
 
     if args.completion:
-        csv_path = (base / args.completion_csv).resolve()
+        csv_path = Path(args.train_dir).resolve()
         out_path = Path(args.out) if args.out else \
             base / "plots" / "completion_length_trajectory.pdf"
         _plot_metric(csv_path, "completion", out_path, args.model_label,
@@ -441,7 +365,7 @@ def main():
         return
 
     if args.entropy:
-        csv_path = (base / args.entropy_csv).resolve()
+        csv_path = Path(args.train_dir).resolve()
         out_path = Path(args.out) if args.out else \
             base / "plots" / "entropy_trajectory.pdf"
         _plot_metric(csv_path, "entropy", out_path, args.model_label,

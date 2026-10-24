@@ -1,12 +1,14 @@
-"""Plot trajectory accuracy vs training step with the paper style.
+"""Accuracy-vs-training-step trajectory figure (main paper figure and 7B appendix).
 
-Reads JSONs written by evaluation/run_task.py and renders one line per method.
-Works for both 1.5B and 3B trajectory folders.
+Reads eval JSONs written by scripts/eval.sh / evaluation/run_task.py.
 
-Usage examples:
-    python plot_trajectory.py
-    python plot_trajectory.py --task math500
-    python plot_trajectory.py --base ../trajectory_postfix_3b --model-label Qwen2.5-3B
+  # main figure: Qwen2.5-1.5B (top row) and Qwen2.5-3B (bottom row)
+  python evaluation/paper_figures/plot_trajectory_panel.py --combined \
+      --base results/qwen2.5-1.5b --base-3b results/qwen2.5-3b \
+      --exclude intuitor_klcov --out figures/trajectory_panel.pdf
+  # one model, three tasks
+  python evaluation/paper_figures/plot_trajectory_panel.py --panel \
+      --base results/qwen2.5-7b --model-label Qwen2.5-7B --panel-tasks gsm8k,math500 --out figures/trajectory_7b.pdf
 """
 
 import argparse
@@ -27,32 +29,13 @@ from palette import label_color as _label_color, line_kw as _line_kw
 
 DEFAULT_BASE = Path(__file__).resolve().parent.parent
 
-# Canonical style map used for both 1.5B and 3B aliases.
-STYLE_BY_METHOD = {k: _label_color(k) for k in (
-    "grpo_gt",
-    "grpo_gt_3b",
-    "intuitor",
-    "intuitor_3b",
-    "intuitor_klcov",
-    "intuitor_klcov_3b",
-    "multi_reward_final",
-    "multi_reward_final_3b",
-    "multi_reward_final_klcov05",
-    "multi_reward_final_klcov05_3b",
-    "grpo_gt_7b",
-    "intuitor_7b",
-    "multi_reward_final_klcov05_7b",
-)}
-
-# Preferred plotting order. Missing methods are skipped automatically.
-ORDER = [
-    "grpo_gt", "grpo_gt_3b",
-    "intuitor", "intuitor_3b",
-    "intuitor_klcov", "intuitor_klcov_3b",
-    "multi_reward_final", "multi_reward_final_3b",
-    "multi_reward_final_klcov05", "multi_reward_final_klcov05_3b",
-    "grpo_gt_7b", "intuitor_7b", "multi_reward_final_klcov05_7b",
-]
+# Run names (recipe file names, as written by scripts/eval.sh) in plotting order.
+# Older run names are accepted through palette.ALIASES. Missing methods are skipped.
+ORDER = ["grpo_gt", "intuitor", "intuitor_klcov", "multi_reward", "multi_reward_klcov",
+         "multi_reward_final", "multi_reward_final_klcov05", "grpo_gt_3b", "intuitor_3b",
+         "multi_reward_final_3b", "multi_reward_final_klcov05_3b",
+         "grpo_gt_7b", "intuitor_7b", "multi_reward_final_klcov05_7b"]
+STYLE_BY_METHOD = {k: _label_color(k) for k in ORDER}
 
 
 def collect(base: Path, task: str):
@@ -343,13 +326,11 @@ def main():
         base2 = Path(args.base_3b).resolve()
         tasks = [t.strip() for t in args.panel_tasks.split(",") if t.strip()]
         out_path = Path(args.out) if args.out else base / "plots" / "trajectory_panel_combined.png"
-        # Main-text figure only: "CIRCA (ours)" instead of the beta_cov value,
-        # which isn't explained in this figure's caption. Scoped to this one
-        # process's STYLE_BY_METHOD (each regenerate_all.sh invocation is a
-        # fresh interpreter), so it doesn't touch the 7B/Qwen3/A4 panels.
-        for k in ("multi_reward_final_klcov05", "multi_reward_final_klcov05_3b"):
+        # Main-text figure only: "Multi-reward + KL-Cov (ours)" instead of the beta_cov value,
+        # which isn't explained in this figure's caption.
+        for k in ("multi_reward_klcov", "multi_reward_final_klcov05", "multi_reward_final_klcov05_3b"):
             if k in STYLE_BY_METHOD:
-                STYLE_BY_METHOD[k] = ("CIRCA (ours)", STYLE_BY_METHOD[k][1])
+                STYLE_BY_METHOD[k] = ("Multi-reward + KL-Cov (ours)", STYLE_BY_METHOD[k][1])
         _plot_combined_panel([base, base2], tasks, out_path,
                              [args.model_label, args.model_label_3b], excluded)
         return

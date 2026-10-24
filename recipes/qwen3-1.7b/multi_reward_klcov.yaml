@@ -1,0 +1,53 @@
+# qwen3-1.7b/multi_reward_klcov — generated from the configuration used for the paper.
+method: multi_reward
+model_name_or_path: Qwen/Qwen3-1.7B-Base
+model_revision: main
+dtype: bfloat16
+attn_implementation: flash_attention_2
+dataset_name: DigitalLearningGmbH/MATH-lighteval
+dataset_prompt_column: problem
+system_prompt: 'You are a helpful AI Assistant, designed to provided well-reasoned and detailed responses. You FIRST think about the reasoning process step by step and then provide the user with the answer.
+  Please enclose your final answer in the box: \boxed{Your Answer}. Please stop generation immediately after outputing the box.'
+reward_funcs:
+- cluster_voting
+- boxed_format
+w_cluster_format: 0.5
+w_selfcert: 0.5
+w_cluster: 0.5
+w_format: 0.1
+beta_cov: 0.02
+top_k_fraction: 0.02
+loss_type: grpo
+vllm_importance_sampling_correction: false
+num_iterations: 2
+bf16: true
+beta: 0.005
+use_vllm: true
+learning_rate: 3.0e-06
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+epsilon: 0.2
+temperature: 1.0
+max_grad_norm: 1.0
+max_completion_length: 3072
+num_generations: 7
+num_train_epochs: 1
+per_device_train_batch_size: 7
+gradient_accumulation_steps: 42
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+max_steps: 200
+log_completions: false
+log_level: info
+logging_first_step: true
+logging_steps: 1
+logging_strategy: steps
+report_to:
+- none
+save_strategy: steps
+save_steps: 20
+save_total_limit: 50
+seed: 7
+output_dir: outputs/qwen3-1.7b_multi_reward_klcov
+run_name: qwen3-1.7b_multi_reward_klcov

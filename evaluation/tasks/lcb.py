@@ -70,20 +70,46 @@ def _extract_code(model_output: str) -> str:
 
 
 def _build_functional_script(user_code: str, func_name: str, test_input: str, expected: str) -> str:
-    """LeetCode-style: instantiate Solution() and call .{func_name}(*args)."""
+    """LeetCode-style test, as in LiveCodeBench's grader: the input holds one JSON
+    value per line (one per argument); call Solution().{func_name}(*args) and compare
+    with the expected JSON value (tuples are compared as lists)."""
     return (
         "import json, sys\n"
         "from typing import *\n"
         f"{user_code}\n\n"
         "try:\n"
-        f"    _inp = json.loads({test_input!r})\n"
-        "    _args = _inp if isinstance(_inp, list) else [_inp]\n"
+        f"    _args = [json.loads(_l) for _l in {test_input!r}.split('\\n')]\n"
         f"    _got = Solution().{func_name}(*_args)\n"
+        "    if isinstance(_got, tuple):\n"
+        "        _got = list(_got)\n"
         f"    _expected = json.loads({expected!r})\n"
         "    print('__PASS__' if _got == _expected else '__FAIL__')\n"
         "except Exception as e:\n"
         "    print('__EXC__', type(e).__name__, str(e))\n"
     )
+
+
+def _stripped_lines(text: str) -> List[str]:
+    lines = [line.strip() for line in (text or "").strip().split("\n")]
+    return lines
+
+
+def _stdout_matches(prediction: str, expected: str) -> bool:
+    """LiveCodeBench's stdio comparison: same number of lines, each line equal after
+    stripping, or equal as a sequence of numbers (Decimal)."""
+    from decimal import Decimal, InvalidOperation
+    pred, gold = _stripped_lines(prediction), _stripped_lines(expected)
+    if len(pred) != len(gold):
+        return False
+    for p_line, g_line in zip(pred, gold):
+        if p_line == g_line:
+            continue
+        try:
+            if [Decimal(x) for x in p_line.split()] != [Decimal(x) for x in g_line.split()]:
+                return False
+        except (InvalidOperation, ValueError):
+            return False
+    return True
 
 
 def _build_stdin_script(user_code: str) -> str:
@@ -187,6 +213,6 @@ class LCBTask(Task):
                 res = run_python(script, stdin_text=t.get("input", ""), timeout=self.per_test_timeout)
                 if res.timeout or not res.passed:
                     return 0.0
-                if (res.stdout or "").strip() != (t.get("output", "") or "").strip():
+                if not _stdout_matches(res.stdout or "", t.get("output", "") or ""):
                     return 0.0
         return 1.0

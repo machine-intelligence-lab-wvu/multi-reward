@@ -11,7 +11,6 @@ from evaluation.tasks.aime import AIME2024Task, AIME2025Task
 from evaluation.tasks.mmlu_pro import MMLUProTask
 from evaluation.tasks.cruxeval_o import CRUXEvalOTask
 from evaluation.tasks.lcb import LCBTask
-from evaluation.tasks.triviaqa import TriviaQATask
 
 TASK_REGISTRY = {
     "gsm8k": GSM8KTask,
@@ -21,7 +20,6 @@ TASK_REGISTRY = {
     "mmlu_pro": MMLUProTask,
     "cruxeval_o": CRUXEvalOTask,
     "lcb": LCBTask,
-    "triviaqa": TriviaQATask,
 }
 
 

@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite the paper below."
-title: "Multi-Reward RLIF (CIRCA)"
+title: "Two is better than one: A Collapse-Resistant Multi-Reward RLIF Training Framework"
 abstract: >-
   A collapse-resistant multi-reward framework for reinforcement learning from
   internal feedback, combining an answer-level cluster-voting reward with a

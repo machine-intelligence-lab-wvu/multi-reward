@@ -1,115 +1,98 @@
 # Reproducing the paper
 
-Every number in the paper comes from one config in
-`open_r1_imp/recipes/final/`. This file maps results to configs.
+Every experiment is one recipe trained with `scripts/train.sh` and evaluated with
+`scripts/eval.sh`. Run directories are `outputs/<model>_<recipe>/`; evaluation results go to
+`results/<model>/`. Commands below assume the repository root.
 
-## Before you start
+Training is stochastic (vLLM sampling), and every run in the paper is a single seed (7), so
+expect run-to-run variation, especially in when single-reward runs collapse.
+
+**Training horizon.** The Qwen2.5-1.5B/3B recipes have `max_steps: 500` (the cosine schedule
+spans 500 steps) and the paper evaluates checkpoints 20–340, so training can be stopped after
+step 340; do not lower `max_steps`, which would change the learning-rate schedule. The 7B
+recipes have `max_steps: 340` and were evaluated through step 240; Qwen3-1.7B and the
+GRPO-GT ± KL-Cov runs train for 200 steps.
+
+## Main results (Qwen2.5-1.5B and 3B)
+
+Runs, for `M` in `qwen2.5-1.5b` and `qwen2.5-3b`:
 
 ```bash
-export MR_SCRATCH=/your/scratch
-export MR_OUTPUT_DIR=$MR_SCRATCH/outputs
-export MR_DATA_DIR=$MR_SCRATCH/data
-export MR_CACHE_DIR=$MR_SCRATCH/cache
-export HF_HOME=$MR_SCRATCH/hf
-export PYTHONPATH=$PWD:$PYTHONPATH
+for R in grpo_gt intuitor multi_reward multi_reward_klcov; do bash scripts/train.sh recipes/$M/$R.yaml; done
 ```
 
-Training data is the MATH training split (`MATH-lighteval`), used **without
-labels** for every unsupervised run. Ground truth is consumed only by the
-supervised `grpo_gt` baseline and by evaluation of frozen checkpoints.
-
-## Shared hyperparameters
-
-Identical across every run unless a config says otherwise:
-
-| Setting | Value |
+| Result | Evaluation |
 |---|---|
-| Optimizer | GRPO, lr `3e-6`, cosine schedule |
-| Rollouts per prompt | `G = 7` |
-| Max completion length | 3072 tokens |
-| GRPO KL coefficient | `β = 0.005` |
-| Effective batch | 882 prompts / step (6,174 rollouts) |
-| Reward channel weights | `α = β = 0.5` |
-| KL-Cov top-k fraction | `k = 0.02` (top 2% of tokens) |
-| Default `β_cov` | `0.05` |
-| Horizon | 340 steps (40 epochs); 240 at 7B, 200 for Qwen3 |
+| Trajectory figure, stability table, retention table | `bash scripts/eval.sh outputs/${M}_$R` (GSM8K, MATH500, MMLU-Pro, every 20 steps) |
+| Table 1 (step 160; math and code) | `TASKS=gsm8k,math500,mmlu_pro,lcb,cruxeval_o STEPS=160 bash scripts/eval.sh outputs/${M}_$R` |
+| AIME table (step 160) | `TASKS=aime2024,aime2025 STEPS=160 bash scripts/eval.sh outputs/${M}_$R` |
 
-## Main results · stability under continued training
+```bash
+python evaluation/paper_figures/plot_trajectory_panel.py --combined \
+    --base results/qwen2.5-1.5b --base-3b results/qwen2.5-3b --exclude intuitor_klcov \
+    --out figures/trajectory_panel.pdf
+```
 
-Trained on Qwen2.5-1.5B and 3B, evaluated every 20 steps.
+## Qwen2.5-7B (appendix)
 
-| Row in paper | Config |
+Recipes `recipes/qwen2.5-7b/{grpo_gt,intuitor,multi_reward_klcov}.yaml`.
+
+| Result | Evaluation |
 |---|---|
-| GRPO-GT (supervised) | `config_grpo_gt_qwen25_1.5b.yaml` · `..._3b.yaml` |
-| INTUITOR | `config_intuitor_qwen25_1.5b.yaml` · `..._3b.yaml` |
-| CIRCA w/o KL-Cov | `config_multi_reward_noklcov_qwen25_1.5b.yaml` · `..._3b.yaml` |
-| **CIRCA (ours)** | `config_multi_reward_klcov_0.05_qwen25_1.5b.yaml` · `..._3b.yaml` |
+| Greedy trajectories (steps 20–240) | `TASKS=gsm8k,math500,aime2024,aime2025 bash scripts/eval.sh outputs/qwen2.5-7b_$R` |
+| Sampling (avg-pass@1, pass@K), GSM8K | `TASKS=gsm8k STEPS=40,80,120,160,200,240 EVAL_ARGS="--n_samples 8 --temperature 1.0" bash scripts/eval.sh outputs/qwen2.5-7b_$R results/qwen2.5-7b-t1` |
+| Sampling, MATH500 | same with `TASKS=math500` and `--n_samples 16` |
+| Sampling, AIME (step 240) | `TASKS=aime2024,aime2025 STEPS=240 EVAL_ARGS="--n_samples 32 --temperature 1.0"` |
 
-## Scaling · Qwen2.5-7B
+```bash
+python evaluation/paper_figures/plot_trajectory_panel.py --panel --base results/qwen2.5-7b \
+    --model-label Qwen2.5-7B --panel-tasks gsm8k,math500 --out figures/trajectory_7b.pdf
+```
 
-| Row | Config |
-|---|---|
-| GRPO-GT | `config_grpo_gt_qwen25_7b.yaml` |
-| INTUITOR | `config_intuitor_qwen25_7b.yaml` |
-| CIRCA | `config_multi_reward_klcov_0.05_qwen25_7b.yaml` |
+## Qwen3-1.7B-Base (appendix)
 
-Horizon is 240 steps — the longest common budget under a 12 h walltime on
-4×GH200.
+Recipes `recipes/qwen3-1.7b/{grpo_gt,intuitor,multi_reward_klcov}.yaml` (`beta_cov: 0.02`).
 
-## Ablations
+```bash
+TASKS=gsm8k,math500 bash scripts/eval.sh outputs/qwen3-1.7b_$R
+TASKS=mmlu_pro STEPS=200 EVAL_ARGS="--max_samples 2000 --sample_seed 7" bash scripts/eval.sh outputs/qwen3-1.7b_$R
+TASKS=gsm8k,math500 bash scripts/eval.sh Qwen/Qwen3-1.7B-Base results/qwen3-1.7b
+TASKS=mmlu_pro EVAL_ARGS="--max_samples 2000 --sample_seed 7" bash scripts/eval.sh Qwen/Qwen3-1.7B-Base results/qwen3-1.7b
 
-**Complementary failure modes** — cluster-voting vs self-certainty vs both,
-all with KL-Cov off:
+python evaluation/paper_figures/plot_qwen3_trajectory.py --results_dir results/qwen3-1.7b --out figures/trajectory_qwen3.pdf
+python evaluation/significance.py --results-dir results/qwen3-1.7b --step 200     # Wilson CIs + McNemar
+```
 
-| Arm | Config |
-|---|---|
-| Cluster-only (≈ EMPO objective on math) | `config_cluster_only_noklcov_qwen25_1.5b.yaml` |
-| Self-certainty-only (INTUITOR) | `config_intuitor_qwen25_1.5b.yaml` |
-| Multi-reward, no KL-Cov | `config_multi_reward_noklcov_qwen25_1.5b.yaml` |
+The MMLU-Pro subset (2,000 questions, seed 7) is drawn at random across all 14 categories.
 
-**KL-Cov on a single signal** — does KL-Cov alone rescue INTUITOR?
+## GRPO-GT with and without KL-Cov (appendix)
 
-| Arm | Config |
-|---|---|
-| INTUITOR + KL-Cov (1.5B) | `config_intuitor_klcov_0.02_qwen25_1.5b.yaml` |
-| INTUITOR + KL-Cov (3B) | `config_intuitor_klcov_0.05_qwen25_3b.yaml` |
+Recipes `recipes/qwen2.5-1.5b/grpo_gt_noklcov.yaml` and `grpo_gt_klcov.yaml`. The two
+recipes are identical except for KL-Cov.
 
-**β_cov sweep** — 200× range, 1.5B:
+```bash
+TASKS=gsm8k,math500 bash scripts/eval.sh outputs/qwen2.5-1.5b_grpo_gt_noklcov
+TASKS=gsm8k,math500 bash scripts/eval.sh outputs/qwen2.5-1.5b_grpo_gt_klcov
+python evaluation/paper_figures/plot_grpo_gt_klcov_trajectory.py --results_dir results/qwen2.5-1.5b \
+    --out figures/trajectory_grpo_gt_klcov.pdf
+python evaluation/significance.py --results-dir results/qwen2.5-1.5b --step 200 \
+    --compare "grpo_gt_klcov:grpo_gt_noklcov:GRPO-GT+KL-Cov vs GRPO-GT"
+```
 
-`config_multi_reward_klcov_{0.0005,0.02,0.05,0.1}_qwen25_1.5b.yaml`
+## Ablations (Qwen2.5-1.5B)
 
-## Rebuttal / extended experiments
+All evaluated with `bash scripts/eval.sh outputs/qwen2.5-1.5b_$R` (GSM8K, MATH500, MMLU-Pro,
+every 20 steps; the paper shows steps 20–280). Completion length and entropy come from each
+run's `trainer_state.json`.
 
-`open_r1_imp/recipes/rebuttal/` holds the additional runs:
+| Experiment | Recipes | Figure |
+|---|---|---|
+| Single- vs multi-reward (no KL-Cov) | `cluster_only`, `intuitor`, `multi_reward` | `plot_single_multi_reward.py --paper-panel --base results/qwen2.5-1.5b --train-dir outputs --paper-panel-out figures/single_multi_reward.pdf` |
+| KL-Cov coefficient sweep | `multi_reward`, `multi_reward_klcov_beta0.0005`, `multi_reward_klcov`, `multi_reward_klcov_beta0.1` | `plot_klcov_sweep.py --paper-panel --base results/qwen2.5-1.5b --train-dir outputs --paper-panel-out figures/klcov_sweep.pdf` |
+| INTUITOR + KL-Cov | `intuitor`, `intuitor_klcov` | `plot_intuitor_klcov.py --paper-panel --base results/qwen2.5-1.5b --train-dir outputs --paper-panel-out figures/intuitor_klcov.pdf` |
+| Component ablation table | `multi_reward_klcov`, `multi_reward`, `intuitor`, `cluster_only` | peak and step-340 values from the trajectories |
+| GDPO normalization | `gdpo_ablation_per_channel`, `gdpo_ablation_combine_then_norm` | `plot_gdpo_ablation.py accuracy --base results/qwen2.5-1.5b --out figures/gdpo_accuracy.pdf` and `plot_gdpo_ablation.py gradients --train-dir outputs --out figures/gdpo_gradients.pdf` |
 
-| Experiment | Config |
-|---|---|
-| Co-rewarding comparison | `A3_corewarding_qwen25_15b.yaml` |
-| Global entropy bonus vs KL-Cov | `B7_multireward_globalentropy_qwen25_15b.yaml` |
-
-See `open_r1_imp/recipes/rebuttal/RUN_PLAN.md` and `ICLR_RUN_PLAN.md` for the
-protocol notes on those runs.
-
-## Reduced-hardware variants
-
-Not used for paper numbers — provided so the method can be run on smaller
-machines:
-
-- `*_local48g.yaml` — 2×48 GB
-- `*_lora.yaml` — LoRA instead of full fine-tuning
-
-## What is not in this repository
-
-- Model checkpoints
-- Raw evaluation dumps and per-checkpoint score files
-- Paper sources and figures
-
-Trajectory figures and the full result tables are on the
-[project page](https://machine-intelligence-lab-wvu.github.io/multi-reward/).
-
-## Caveats
-
-Each trajectory in the paper is a **single training run** — the compute cost of
-multi-day runs put seed replication out of reach. Expect run-to-run variation,
-particularly in the exact step at which a single-signal baseline collapses. The
-*ordering* of methods was consistent at every checkpoint we evaluated.
+(Figure scripts live in `evaluation/paper_figures/`.) The two GDPO-ablation recipes are the
+main recipe plus the log-prob-space gradient probe (`grad_corr_enabled: true`); the second also
+sets `gdpo_norm_after_combine: true`.

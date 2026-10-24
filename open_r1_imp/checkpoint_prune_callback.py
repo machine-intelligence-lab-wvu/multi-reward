@@ -28,7 +28,7 @@ sidecar files, if present) — leaving the HF-format weights in every
 checkpoint directory forever, at a fraction of the size. If a run needs to
 resume from anything other than the newest checkpoint, that older
 checkpoint's optimizer state is gone by design; that trade-off is the whole
-point of this callback (see ICLR-TODO.md's save-everything policy: the goal
+point of this callback (the goal
 is to never lose *evaluable* checkpoints, not to keep every one resumable).
 """
 

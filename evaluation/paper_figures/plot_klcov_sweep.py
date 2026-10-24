@@ -1,22 +1,14 @@
-"""Plot KL-Cov ablation trajectories (accuracy + completion length).
+"""KL-Cov beta_cov sweep figure (accuracy + completion length), Qwen2.5-1.5B.
 
-Reads:
-  - JSONs under  eval_results_final/klcov_ablation/{method}_ckptXXX/   (accuracy)
-  - CSV         eval_results_final/klcov_ablation/multi_reward_noklcov_klcovs(0.1,0.05,0.005)_mean_completion.csv  (completion length)
+Reads eval JSONs from --base (scripts/eval.sh output, e.g. results/qwen2.5-1.5b)
+and completion lengths from the training runs' trainer_state.json under --train-dir.
 
-Usage:
-  # Accuracy panel (GSM8K / MATH500 / MMLU-Pro):
-  python plot_trajectory.py --panel
-
-  # Completion-length single plot (mean completion tokens vs training step):
-  python plot_trajectory.py --completion
-
-  # One task only:
-  python plot_trajectory.py --task gsm8k
+  python evaluation/paper_figures/plot_klcov_sweep.py --paper-panel \
+      --base results/qwen2.5-1.5b --train-dir outputs --paper-panel-out figures/klcov_sweep.pdf
+  # other modes: --panel (accuracy only), --completion, --task gsm8k
 """
 
 import argparse
-import csv
 import json
 import re
 from collections import defaultdict
@@ -28,6 +20,7 @@ import matplotlib.pyplot as plt
 # paper maps a method to the same appearance (see evaluation/paper_figures/palette.py).
 import sys as _sys
 _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
+from train_logs import load_metric as _load_metric
 from palette import label_color as _label_color, line_kw as _line_kw
 
 
@@ -35,30 +28,13 @@ from palette import label_color as _label_color, line_kw as _line_kw
 DEFAULT_BASE = Path(__file__).resolve().parent
 MAX_STEP_DEFAULT = 280
 
-# Method keys here MUST match the directory names produced by the orchestrator
-# (orchestrate.py expands TRAJECTORY_METHODS into "{method}_ckpt{step:03d}/").
-STYLE_BY_METHOD = {k: _label_color(k) for k in (
-    "multi_reward_final",
-    "multi_reward_final_klcov0005",
-    "multi_reward_final_klcov05",
-    "multi_reward_final_klcov0.1",
-)}
-
-# Plotting order (legend order). Missing methods are skipped automatically.
-ORDER = [
-    "multi_reward_final",
-    "multi_reward_final_klcov0005",
-    "multi_reward_final_klcov05",
-    "multi_reward_final_klcov0.1",
-]
-
-# Map run names that appear in the wandb-export CSV to the same method keys.
-CSV_RUN_TO_METHOD = {
-    "multi-reward-noklcov-qwen25-1.5b":          "multi_reward_final",
-    "multi-reward-final-klcov(0.0005)-qwen25-1.5b": "multi_reward_final_klcov0005",
-    "multi-reward-final-klcov(0.05)-qwen25-1.5b":   "multi_reward_final_klcov05",
-    "multi-reward-final-klcov(0.1)-qwen25-1.5b":    "multi_reward_final_klcov0.1",
-}
+# Run names (recipe names, as written by scripts/eval.sh); older names also work.
+ORDER = ["multi_reward", "multi_reward_klcov_beta0.0005", "multi_reward_klcov", "multi_reward_klcov_beta0.1",
+         "multi_reward_final", "multi_reward_final_klcov0005", "multi_reward_final_klcov05", "multi_reward_final_klcov0.1"]
+STYLE_BY_METHOD = {k: _label_color(k) for k in ORDER}
+# This figure compares beta_cov values, so show it for the default arm too.
+for _k in ("multi_reward_klcov", "multi_reward_final_klcov05"):
+    STYLE_BY_METHOD[_k] = (r"Multi-reward + KL-Cov ($\beta_{cov}$=0.05)", STYLE_BY_METHOD[_k][1])
 
 
 def collect(base: Path, task: str, max_step: int):
@@ -89,70 +65,14 @@ def collect(base: Path, task: str, max_step: int):
     return out
 
 
-def collect_completion_lengths(csv_path: Path, max_step: int, base: Path):
-    """Return {method: [(global_step, mean_length), ...]} sorted by step, capped at max_step.
-
-    The wandb-export CSV has groups of columns per run:
-      <run> - train/completions/mean_length  (value)
-      <run> - _step                          (wandb's internal log-call counter)
-    The CSV's `_step` is NOT the training global_step (wandb logs many calls
-    per training step). We rescale per-run by deriving each method's
-    max_global_step from the eval ckpt dirs under `base`:
-        global_step = _step * (max_ckpt_step / max_csv_step)
-    Then apply `max_step` cap on the rescaled axis.
-    """
-    out = defaultdict(list)
-    if not csv_path.exists():
-        return out
-
-    # Per-method max checkpoint step from the trajectory dirs.
-    pat = re.compile(r"^(?P<method>.+)_ckpt(?P<step>\d+)$")
-    max_ckpt = defaultdict(int)
-    for d in base.iterdir():
-        if not d.is_dir():
-            continue
-        m = pat.match(d.name)
-        if m and m.group("method") in STYLE_BY_METHOD:
-            max_ckpt[m.group("method")] = max(max_ckpt[m.group("method")], int(m.group("step")))
-
-    raw = defaultdict(list)
-    with csv_path.open() as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            for run, method in CSV_RUN_TO_METHOD.items():
-                len_key  = f"{run} - train/completions/mean_length"
-                step_key = f"{run} - _step"
-                if len_key not in row or step_key not in row:
-                    continue
-                len_str = row[len_key].strip()
-                step_str = row[step_key].strip()
-                if not len_str or not step_str:
-                    continue
-                try:
-                    step = int(float(step_str))
-                    val = float(len_str)
-                except ValueError:
-                    continue
-                raw[method].append((step, val))
-
-    for method, pts in raw.items():
-        if not pts or method not in max_ckpt or max_ckpt[method] == 0:
-            continue
-        max_csv = max(s for s, _ in pts)
-        scale = max_ckpt[method] / max_csv  # _step -> global_step
-        rescaled = []
-        for s, v in pts:
-            gs = s * scale
-            if gs > max_step:
-                continue
-            rescaled.append((gs, v))
-        # Deduplicate by rounded step
-        seen = {}
-        for s, v in rescaled:
-            seen.setdefault(round(s, 3), v)
-        out[method] = sorted(seen.items())
+def collect_completion_lengths(train_dir: Path, max_step: int, base: Path = None):
+    """{method: [(step, mean completion length), ...]} from the runs' trainer_state.json."""
+    out = {}
+    for method in ORDER:
+        pts = _load_metric(train_dir, method, "completions/mean_length", max_step=max_step)
+        if pts:
+            out[method] = pts
     return out
-
 
 def _parse_exclude(exclude: str):
     return {m.strip() for m in exclude.split(",") if m.strip()}
@@ -179,7 +99,7 @@ def _plot_single_task(base: Path, task: str, out_path: Path, model_label: str, e
 
     ax.set_xlabel("Training step", fontsize=16)
     ax.set_ylabel(f"{task} accuracy (pass@1, greedy)", fontsize=16)
-    ax.set_title(f"KL-Cov sweep on CIRCA - {model_label} ({task})", fontsize=18)
+    ax.set_title(f"KL-Cov sweep on multi-reward - {model_label} ({task})", fontsize=18)
     ax.tick_params(axis="both", labelsize=14)
     ax.grid(True, alpha=0.3)
     ax.legend(loc="lower right", fontsize=13)
@@ -227,7 +147,7 @@ def _plot_panel(base: Path, tasks, out_path: Path, model_label: str, excluded, m
         ax.set_ylim(0, None)
         ax.set_xlim(0, max_step)
 
-    fig.suptitle(f"KL-Cov sweep on CIRCA - accuracy trajectories - {model_label}", y=0.99, fontsize=21)
+    fig.suptitle(f"KL-Cov sweep on multi-reward - accuracy trajectories - {model_label}", y=0.99, fontsize=21)
     if legend_items:
         labels = list(legend_items.keys())
         handles = [legend_items[k] for k in labels]
@@ -267,7 +187,7 @@ def _plot_completion_length(base: Path, csv_path: Path, out_path: Path,
 
     ax.set_xlabel("Training step", fontsize=16)
     ax.set_ylabel("Mean completion length (tokens)", fontsize=16)
-    ax.set_title(f"KL-Cov sweep on CIRCA - mean completion length ({model_label})", fontsize=18)
+    ax.set_title(f"KL-Cov sweep on multi-reward - mean completion length ({model_label})", fontsize=18)
     ax.tick_params(axis="both", labelsize=14)
     ax.grid(True, alpha=0.3)
     ax.legend(loc="best", fontsize=13)
@@ -371,17 +291,16 @@ def main():
     ap.add_argument("--panel-tasks", default="gsm8k,math500,mmlu_pro",
                     help="Comma-separated tasks for --panel mode")
     ap.add_argument("--completion", action="store_true",
-                    help="Plot mean completion length vs training step from the wandb-export CSV")
-    ap.add_argument("--completion-csv",
-                    default="multi_reward_noklcov_klcovs(0.1,0.05,0.005)_mean_completion.csv",
-                    help="CSV filename (relative to --base) with wandb-exported mean_length runs")
+                    help="Plot mean completion length vs training step (from trainer_state.json)")
+    ap.add_argument("--train-dir", default="outputs",
+                    help="directory holding the training run folders (for completion length)")
     ap.add_argument("--max-step", type=int, default=MAX_STEP_DEFAULT,
                     help="Cap the x-axis at this training step (default 280)")
     ap.add_argument("--exclude", default="",
                     help="Comma-separated method keys to skip")
     ap.add_argument("--paper-panel", action="store_true",
                     help="Render the 2x2 paper figure (3 accuracy + 1 completion length) "
-                         "into paper/ablation/klcov_plot.pdf")
+                         "into figures/klcov_plot.pdf")
     ap.add_argument("--paper-panel-out", default=None,
                     help="Override output path for --paper-panel")
     args = ap.parse_args()
@@ -391,11 +310,9 @@ def main():
 
     if args.paper_panel:
         tasks = [t.strip() for t in args.panel_tasks.split(",") if t.strip()]
-        csv_path = (base / args.completion_csv).resolve()
-        # Default output: <repo>/paper/ablation/klcov_plot.pdf
-        repo_root = base.parent.parent  # eval_results_final/klcov_ablation -> repo
+        csv_path = Path(args.train_dir).resolve()
         out_path = Path(args.paper_panel_out) if args.paper_panel_out else \
-            repo_root / "paper" / "figures" / "ablation" / "klcov_plot.pdf"
+            Path("figures") / "klcov_plot.pdf"
         _plot_paper_panel(base, csv_path, tasks, out_path, args.model_label,
                           excluded, args.max_step)
         if out_path.suffix == ".pdf":
@@ -404,7 +321,7 @@ def main():
         return
 
     if args.completion:
-        csv_path = (base / args.completion_csv).resolve()
+        csv_path = Path(args.train_dir).resolve()
         out_path = Path(args.out) if args.out else base / "plots" / "completion_length_trajectory.pdf"
         _plot_completion_length(base, csv_path, out_path, args.model_label, excluded, args.max_step)
         # Also write a PNG copy for quick viewing.

@@ -1,17 +1,18 @@
 """Sandboxed Python execution utilities for code-eval tasks (CRUXEval-O, LCB).
 
 Runs untrusted code in a subprocess with a hard timeout. Not a true security
-sandbox — adequate for Clariden compute nodes (isolated, ephemeral).
+sandbox — run code evals on an isolated machine or container.
 """
 
 import os
-import signal
+import re
 import subprocess
 import sys
 import tempfile
-import textwrap
 from dataclasses import dataclass
 from typing import Optional
+
+_SECRET_ENV = re.compile(r"TOKEN|KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH|WANDB|AWS_|AZURE_|GOOGLE_", re.I)
 
 
 @dataclass
@@ -40,7 +41,8 @@ def run_python(
     Returns:
         ExecResult with stdout, stderr, and timeout/exception flags.
     """
-    env = os.environ.copy()
+    # Model-generated code must not see credentials (HF_TOKEN, WANDB_API_KEY, cloud keys, ...).
+    env = {k: v for k, v in os.environ.items() if not _SECRET_ENV.search(k)}
     # Keep the subprocess lightweight
     env.pop("PYTHONPATH", None)
     env["PYTHONHASHSEED"] = "0"

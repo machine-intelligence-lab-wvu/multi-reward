@@ -1,0 +1,48 @@
+# qwen2.5-7b/grpo_gt — generated from the configuration used for the paper.
+method: grpo_gt
+model_name_or_path: Qwen/Qwen2.5-7B
+model_revision: main
+dtype: bfloat16
+attn_implementation: flash_attention_2
+dataset_name: DigitalLearningGmbH/MATH-lighteval
+dataset_prompt_column: problem
+system_prompt: 'You are a helpful AI Assistant, designed to provided well-reasoned and detailed responses. You FIRST think about the reasoning process step by step and then provide the user with the answer.
+  Please enclose your final answer in the box: \boxed{Your Answer}. Please stop generation immediately after outputing the box.'
+reward_funcs:
+- accuracy
+reward_weights:
+- 1.0
+num_iterations: 1
+dataset_config: default
+bf16: true
+beta: 0.005
+use_vllm: true
+learning_rate: 3.0e-06
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+temperature: 1.0
+epsilon: 0.2
+max_completion_length: 3072
+num_generations: 7
+num_train_epochs: 1
+max_steps: 340
+gradient_accumulation_steps: 42
+per_device_train_batch_size: 7
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+max_grad_norm: 1.0
+output_dir: outputs/qwen2.5-7b_grpo_gt
+log_completions: false
+log_level: info
+logging_first_step: true
+logging_steps: 1
+logging_strategy: steps
+run_name: qwen2.5-7b_grpo_gt
+report_to:
+- none
+save_strategy: steps
+save_steps: 20
+save_total_limit: 25
+seed: 7
+sc_batch_size: 2
